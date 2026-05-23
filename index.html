@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Game HOKIJITU</title>
+
+    <!-- ICON -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #13131a;
+            --bg-input: #1c1c26;
+
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+
+            --primary: #6366f1;
+            --accent: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            --border: #2d2d3a;
+            --radius: 12px;
+            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            text-align:center;
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-card);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        /* HEADER */
+        .header {
+            padding: 30px 40px;
+            border-bottom: 1px solid var(--border);
+            text-align:center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header-title i {
+            font-size: 32px;
+            color: var(--primary);
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 30px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        /* SEARCH */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            padding: 25px 40px;
+            background: rgba(0, 0, 0, 0.2);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .search-wrapper {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+            max-width: 500px;
+        }
+
+        .search-wrapper input {
+            flex: 1;
+            padding: 14px 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .search-wrapper input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-search,
+        .btn-refresh {
+            padding: 14px 28px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: var(--radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-search:hover,
+        .btn-refresh:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        /* TABLE */
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            padding: 18px 25px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.3);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+            position: sticky;
+            top: 0;
+        }
+
+        tbody td {
+            padding: 18px 25px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tbody tr:hover td {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .col-provider {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .col-game {
+            font-weight: 500;
+        }
+
+        /* MESSAGE */
+        .message-area {
+            padding: 60px 40px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            color: var(--text-secondary);
+        }
+
+        .loading i {
+            font-size: 48px;
+            color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+        }
+
+        .error-msg {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 40px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius);
+            color: var(--danger);
+        }
+
+        /* MOBILE */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .search-box {
+                flex-direction: column;
+                padding: 20px;
+            }
+
+            .search-wrapper {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .btn-refresh {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-title">
+            <i class="fas fa-gamepad"></i>
+            <h1>Search Game HOKIJITU</h1>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="totalGames">0</div>
+                <div class="stat-label">Total Games</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="search-box">
+        <div class="search-wrapper">
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="Cari Provider atau Nama Game..."
+                onkeypress="handleEnter(event)"
+            >
+            <button class="btn-search" onclick="searchGame()">
+                <i class="fas fa-search"></i> Cari
+            </button>
+        </div>
+
+        <button class="btn-refresh" onclick="loadData()">
+            <i class="fas fa-sync-alt"></i> Refresh
+        </button>
+    </div>
+
+    <!-- MESSAGE -->
+    <div id="messageArea"></div>
+
+    <!-- TABLE -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Game Name</th>
+                    <th>Type</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec';
+
+    let allData = [];
+
+    async function loadData() {
+        const msg = document.getElementById('messageArea');
+        const tbody = document.getElementById('tableBody');
+
+        msg.innerHTML = `
+            <div class="message-area">
+                <div class="loading">
+                    <i class="fas fa-spinner"></i>
+                    <span>Loading...</span>
+                </div>
+            </div>
+        `;
+
+        tbody.innerHTML = '';
+
+        try {
+            const res = await fetch(API_URL);
+            const json = await res.json();
+
+            if (!json.success) {
+                throw new Error(json.error);
+            }
+
+            if (json.count === 0) {
+                msg.innerHTML = `
+                    <div class="message-area">
+                        <div class="error-msg">
+                            <i class="fas fa-folder-open"></i>
+                            <span>Data Kosong</span>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            allData = json.data;
+            msg.innerHTML = '';
+            render(allData);
+            updateStats();
+
+        } catch (err) {
+            msg.innerHTML = `
+                <div class="message-area">
+                    <div class="error-msg">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>${err.message}</span>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function render(data) {
+        document.getElementById('tableBody').innerHTML = data.map(row => `
+            <tr>
+                <td class="col-provider">${row.provider}</td>
+                <td class="col-game">${row.gameName}</td>
+                <td>${row.type}</td>
+            </tr>
+        `).join('');
+    }
+
+    function updateStats() {
+        document.getElementById('totalGames').textContent = allData.length;
+    }
+
+    function searchGame() {
+        const keyword = document.getElementById('searchInput')
+            .value
+            .toLowerCase()
+            .trim();
+
+        if (keyword === '') {
+            render(allData);
+            return;
+        }
+
+        const filtered = allData.filter(row =>
+            row.provider.toLowerCase().includes(keyword) ||
+            row.gameName.toLowerCase().includes(keyword)
+        );
+
+        if (filtered.length === 0) {
+            alert('Game tidak ditemukan!');
+            render(allData);
+            return;
+        }
+
+        render(filtered);
+    }
+
+    function handleEnter(e) {
+        if (e.key === 'Enter') {
+            searchGame();
+        }
+    }
+
+    loadData();
+</script>
+</body>
+</html>
