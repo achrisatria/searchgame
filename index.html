@@ -1,606 +1,718 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Search Game HOKIJITU</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Search Game HOKIJITU</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-    <style>
-        /* ── RESET ── */
-        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-        * { scrollbar-width: none; -ms-overflow-style: none; }
-        *::-webkit-scrollbar { display: none; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── TOKENS ── */
-        :root {
-            --bg:   #07090f;
-            --blue: #3b9fff;
-            --text: #f0f4ff;
-            --muted:#5a6585;
-            --r:    16px;
-        }
+  :root {
+    --bg: hsl(222,50%,4%);
+    --hdr: hsl(222,50%,7%);
+    --blue: hsl(213,94%,62%);
+    --blue-dim: hsl(213,94%,62%,0.18);
+    --blue-faint: hsl(213,94%,62%,0.1);
+    --text: hsl(210,40%,95%);
+    --muted: hsl(215,20%,38%);
+    --card: hsl(222,44%,7%);
+    --row-even: hsl(222,44%,7%);
+    --row-odd: hsl(222,44%,6.2%);
+    --divider: hsl(213,94%,62%,0.12);
+    --border: hsl(213,94%,62%,0.2);
+    --input-bg: hsl(222,50%,5%);
+    --radius: 12px;
+  }
 
-        /* ── BASE ── */
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px 16px 60px;
-            overflow-x: hidden;
-            position: relative;
-        }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
 
-        /* Dot grid */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background-image: radial-gradient(circle, rgba(59,159,255,0.07) 1px, transparent 1px);
-            background-size: 32px 32px;
-            pointer-events: none;
-            z-index: 0;
-        }
+  /* Radial bg glow */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 40% at 50% -10%, hsl(213,80%,18%,0.5) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 30% at 80% 80%, hsl(199,89%,14%,0.3) 0%, transparent 60%);
+  }
 
-        /* Bottom fade */
-        body::after {
-            content: '';
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 160px;
-            background: linear-gradient(to top, var(--bg), transparent);
-            pointer-events: none;
-            z-index: 0;
-        }
+  /* Grid mesh */
+  body::after {
+    content: '';
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(hsl(213,94%,62%,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(213,94%,62%,0.025) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
 
-        /* Glow blobs */
-        .blob {
-            position: fixed;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        .blob-1 { width:700px;height:600px;top:-200px;left:5%;    background:radial-gradient(ellipse,rgba(59,159,255,0.12) 0%,transparent 70%);animation:floatBlob 8s ease-in-out infinite; }
-        .blob-2 { width:500px;height:500px;bottom:-150px;right:5%; background:radial-gradient(ellipse,rgba(30,100,220,0.09) 0%,transparent 70%);animation:floatBlob 11s ease-in-out infinite reverse; }
-        .blob-3 { width:300px;height:300px;top:40%;left:55%;       background:radial-gradient(ellipse,rgba(59,159,255,0.06) 0%,transparent 70%);animation:floatBlob 14s ease-in-out infinite 2s; }
+  /* Scan line */
+  .scan-line {
+    position: fixed; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, hsl(213,94%,70%,0.6), transparent);
+    animation: scan 8s linear infinite;
+    pointer-events: none; z-index: 9999;
+  }
 
-        /* ── WRAP ── */
-        .wrap {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 1100px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
+  @keyframes scan {
+    0%   { transform: translateY(-10px); opacity: 0; }
+    10%  { opacity: 0.4; }
+    90%  { opacity: 0.4; }
+    100% { transform: translateY(100vh); opacity: 0; }
+  }
 
-        /* ── HEADER ── */
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            height: 80px;
-            border-radius: var(--r);
-            position: relative;
-            overflow: hidden;
-            flex-wrap: wrap;
-            gap: 12px;
-            background: linear-gradient(135deg,rgba(12,15,30,0.88),rgba(8,12,24,0.92));
-            border: 1px solid rgba(59,159,255,0.15);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07);
-        }
+  @keyframes shimmer-anim {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
 
-        .header::before {
-            content:'';
-            position:absolute;
-            top:0;left:0;right:0;
-            height:1px;
-            background:linear-gradient(90deg,transparent,rgba(59,159,255,0.5),rgba(140,210,255,0.8),rgba(59,159,255,0.5),transparent);
-            background-size:200% auto;
-            animation:shimmer 4s linear infinite;
-        }
+  @keyframes float-glow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50%       { opacity: 0.8; transform: scale(1.1); }
+  }
 
-        .logo { display:flex; align-items:center; gap:14px; }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 20px hsl(213,94%,55%,0.4), 0 0 40px hsl(213,94%,55%,0.15); }
+    50%  { box-shadow: 0 0 28px hsl(213,94%,55%,0.6), 0 0 56px hsl(213,94%,55%,0.25); }
+    100% { box-shadow: 0 0 20px hsl(213,94%,55%,0.4), 0 0 40px hsl(213,94%,55%,0.15); }
+  }
 
-        .logo-icon {
-            width:48px;height:48px;border-radius:12px;
-            display:flex;align-items:center;justify-content:center;
-            font-size:19px;color:var(--blue);
-            background:linear-gradient(135deg,rgba(59,159,255,0.22),rgba(30,100,220,0.12));
-            border:1px solid rgba(59,159,255,0.35);
-            box-shadow:0 0 24px rgba(59,159,255,0.30),inset 0 1px 0 rgba(255,255,255,0.15);
-        }
+  @keyframes skeleton {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
 
-        .logo-text h1 {
-            font-size:22px;font-weight:700;letter-spacing:1.5px;
-            background:linear-gradient(135deg,#fff 30%,rgba(59,159,255,0.85) 100%);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-        }
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 30;
+    background: linear-gradient(180deg, hsl(222,50%,7%,0.97) 0%, hsl(213,50%,9%,0.94) 100%);
+    border-bottom: 1px solid hsl(213,94%,62%,0.18);
+    box-shadow: 0 1px 0 hsl(213,94%,62%,0.25), 0 4px 32px hsl(213,94%,30%,0.3), 0 16px 48px hsl(222,50%,3%,0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
 
-        .logo-text p {
-            font-size:9.5px;font-weight:600;letter-spacing:3px;
-            text-transform:uppercase;color:var(--muted);margin-top:3px;
-        }
+  .header-accent {
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(213,94%,70%,0.8) 30%, hsl(199,89%,70%,0.8) 70%, transparent);
+  }
 
-        .stat-box {
-            display:flex;align-items:center;gap:10px;
-            padding:10px 18px;border-radius:12px;
-            background:linear-gradient(135deg,rgba(59,159,255,0.10),rgba(30,100,220,0.06));
-            border:1px solid rgba(59,159,255,0.18);
-            box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-        .stat-box i { color:var(--blue);font-size:14px; }
-        .stat-lbl { display:block;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted); }
-        .stat-val { font-size:16px;font-weight:700; }
+  .header-inner {
+    max-width: 1300px; margin: 0 auto; padding: 0 24px;
+    height: 72px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; z-index: 1;
+  }
 
-        /* ── SEARCH ── */
-        .search-row { display:flex;gap:12px;flex-wrap:wrap; }
+  .logo-area { display: flex; align-items: center; gap: 16px; }
 
-        .search-field { flex:1;min-width:240px;position:relative; }
-        .search-field i { position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;transition:color .2s;pointer-events:none; }
-        .search-field:focus-within i { color:var(--blue); }
-        .search-field input {
-            width:100%;padding:0 18px 0 44px;height:52px;
-            background:rgba(10,14,28,0.75);
-            border:1px solid rgba(59,159,255,0.13);
-            border-radius:12px;color:var(--text);
-            font-family:'Outfit',sans-serif;font-size:15px;outline:none;
-            backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
-            box-shadow:0 4px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.05);
-            transition:border-color .2s,box-shadow .2s;
-        }
-        .search-field input::placeholder { color:var(--muted); }
-        .search-field input:focus {
-            border-color:rgba(59,159,255,0.45);
-            box-shadow:0 0 0 3px rgba(59,159,255,0.14),0 4px 16px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.06);
-        }
+  .logo-wrap {
+    position: relative;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
 
-        .btn-refresh {
-            height:52px;padding:0 28px;border:none;border-radius:12px;
-            font-family:'Outfit',sans-serif;font-size:14px;font-weight:600;
-            cursor:pointer;display:inline-flex;align-items:center;gap:8px;
-            white-space:nowrap;color:#fff;
-            background:linear-gradient(135deg,#2b8eff,#1a6eee);
-            border-top:1px solid rgba(255,255,255,0.20);
-            box-shadow:0 0 24px rgba(43,142,255,0.35),0 4px 12px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.20);
-            transition:transform .15s,box-shadow .15s;
-        }
-        .btn-refresh:hover { transform:translateY(-2px);box-shadow:0 0 32px rgba(43,142,255,0.50),0 8px 20px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.20); }
-        .btn-refresh:active { transform:translateY(0); }
-        .btn-refresh:disabled { opacity:.5;cursor:not-allowed;transform:none; }
+  .logo-halo {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: hsl(213,94%,55%,0.18);
+    filter: blur(10px);
+    animation: float-glow 3s ease-in-out infinite;
+  }
 
-        /* ── TABLE CARD ── */
-        .table-card {
-            display:flex;flex-direction:column;
-            position:relative;border-radius:var(--r);overflow:hidden;
-            background:linear-gradient(160deg,rgba(10,14,30,0.78),rgba(7,10,22,0.92));
-            border:1px solid rgba(59,159,255,0.12);
-            backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-            box-shadow:0 24px 64px rgba(0,0,0,0.50),inset 0 1px 0 rgba(255,255,255,0.06);
-        }
-        .table-card::before {
-            content:'';position:absolute;top:0;left:0;right:0;height:1px;z-index:2;
-            background:linear-gradient(90deg,transparent,rgba(59,159,255,0.4) 30%,rgba(140,210,255,0.7) 50%,rgba(59,159,255,0.4) 70%,transparent);
-            background-size:200% auto;animation:shimmer 6s linear infinite;
-        }
+  .logo-img {
+    width: 40px; height: 40px;
+    object-fit: contain;
+    position: relative; z-index: 1;
+    filter: drop-shadow(0 0 8px hsl(213,94%,65%,0.7)) brightness(1.08);
+  }
 
-        /* ── COL HEADER ── */
-        .t-head {
-            display:grid;grid-template-columns:28% 1fr 16%;
-            background:linear-gradient(180deg,rgba(59,159,255,0.07) 0%,rgba(59,159,255,0.02) 100%);
-            border-bottom:1px solid rgba(59,159,255,0.20);
-            position:relative;z-index:1;
-        }
-        .t-head div {
-            padding:14px 20px;font-size:9.5px;font-weight:700;
-            letter-spacing:2.5px;text-transform:uppercase;
-            color:rgba(59,159,255,0.65);
-            text-align:center;display:flex;align-items:center;justify-content:center;
-        }
-        .t-head div:not(:last-child) { border-right:1px solid rgba(59,159,255,0.22); }
+  .brand h1 {
+    font-size: 14px; font-weight: 900;
+    letter-spacing: 0.22em; text-transform: uppercase; line-height: 1;
+    background: linear-gradient(90deg, hsl(213,94%,75%), hsl(199,89%,90%) 30%, hsl(213,94%,80%) 50%, hsl(199,89%,90%) 70%, hsl(213,94%,75%));
+    background-size: 200% auto;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-anim 4s linear infinite;
+  }
 
-        /* ── BODY ── */
-        .t-body { max-height:calc(100vh - 310px);min-height:360px;overflow-y:auto; }
+  .brand p {
+    display: flex; align-items: center; gap: 5px;
+    margin-top: 4px; font-size: 9px; font-weight: 600;
+    letter-spacing: 0.3em; text-transform: uppercase;
+    color: hsl(213,94%,55%);
+  }
 
-        /* ── PROVIDER GROUP HEADER ── */
-        .prov-header {
-            display:flex;align-items:center;gap:10px;
-            padding:0 18px;height:44px;position:relative;
-            background:linear-gradient(90deg,rgba(59,159,255,0.05) 0%,rgba(59,159,255,0.01) 60%,transparent 100%);
-            border-bottom:1px solid rgba(59,159,255,0.07);
-            user-select:none;
-        }
+  .stats-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 16px; border-radius: 16px;
+    background: linear-gradient(135deg, hsl(213,94%,62%,0.1), hsl(199,89%,55%,0.06));
+    border: 1px solid hsl(213,94%,62%,0.25);
+    box-shadow: 0 0 20px hsl(213,94%,55%,0.15), inset 0 1px 0 hsl(213,94%,80%,0.1);
+  }
 
-        .prov-bar {
-            width:3px;height:22px;border-radius:2px;flex-shrink:0;
-            background:linear-gradient(to bottom,rgba(59,159,255,0.9),rgba(30,100,220,0.4));
-            box-shadow:0 0 8px rgba(59,159,255,0.5);
-        }
+  .stats-badge .count { font-size: 14px; font-weight: 700; color: hsl(213,94%,82%); }
+  .stats-badge .label { font-size: 12px; color: var(--muted); }
+  .stats-badge .hash  { font-size: 14px; color: hsl(213,94%,68%); font-weight: 900; }
 
-        .prov-icon {
-            width:26px;height:26px;border-radius:8px;flex-shrink:0;
-            display:flex;align-items:center;justify-content:center;font-size:11px;
-            background:linear-gradient(135deg,rgba(59,159,255,0.18),rgba(30,100,220,0.10));
-            border:1px solid rgba(59,159,255,0.25);
-            box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);
-            color:rgba(59,159,255,0.85);
-        }
+  /* ── MAIN ── */
+  main {
+    max-width: 1300px; margin: 0 auto;
+    padding: 28px 24px; position: relative; z-index: 1;
+  }
 
-        .prov-name {
-            font-size:13px;font-weight:700;letter-spacing:.3px;
-            background:linear-gradient(90deg,#fff 40%,rgba(59,159,255,0.75) 100%);
-            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;
-        }
+  /* ── FILTERS ── */
+  .filters {
+    background: linear-gradient(135deg, hsl(222,44%,9%,0.9), hsl(213,50%,11%,0.85));
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px; margin-bottom: 24px;
+    display: flex; flex-wrap: wrap; gap: 12px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 4px 32px hsl(213,94%,20%,0.2), inset 0 1px 0 hsl(213,94%,62%,0.15);
+    position: relative; overflow: hidden;
+  }
 
-        .prov-count {
-            font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;flex-shrink:0;
-            background:rgba(59,159,255,0.12);border:1px solid rgba(59,159,255,0.22);
-            color:rgba(59,159,255,0.80);
-        }
+  .filters::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(213,94%,80%,0.2), transparent);
+  }
 
-        .prov-line {
-            flex:1;height:1px;min-width:20px;
-            background:linear-gradient(90deg,rgba(59,159,255,0.22),rgba(59,159,255,0.05) 60%,transparent);
-        }
+  .search-wrap { flex: 1; min-width: 200px; position: relative; }
+  .search-wrap svg {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px;
+    color: hsl(213,94%,65%); stroke: hsl(213,94%,65%);
+    pointer-events: none;
+  }
 
-        /* ── GAME ROW ── */
-        .t-row {
-            display:grid;grid-template-columns:28% 1fr 16%;
-            border-bottom:1px solid rgba(255,255,255,0.03);
-            position:relative;transition:background .15s;
-            animation:fadeUp .22s ease both;
-        }
-        .t-row:last-child { border-bottom:none; }
+  .filters input, .filters select {
+    width: 100%; height: 40px; padding: 0 12px;
+    background: var(--input-bg);
+    border: 1px solid hsl(213,94%,62%,0.18);
+    border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+    box-shadow: inset 0 2px 12px hsl(222,50%,2%,0.6);
+    appearance: none; -webkit-appearance: none;
+  }
 
-        /* Accent bar */
-        .t-row::before {
-            content:'';position:absolute;left:0;top:0;bottom:0;width:2px;
-            background:linear-gradient(to bottom,transparent,var(--blue),transparent);
-            opacity:0;transition:opacity .2s;
-        }
-        /* Glow overlay */
-        .t-row::after {
-            content:'';position:absolute;inset:0;
-            background:linear-gradient(90deg,rgba(59,159,255,0.06),transparent 55%);
-            opacity:0;transition:opacity .2s;pointer-events:none;
-        }
-        .t-row:hover { background:rgba(59,159,255,0.03); }
-        .t-row:hover::before { opacity:1; }
-        .t-row:hover::after  { opacity:1; }
-        .t-row:hover .col-game { color:rgba(240,244,255,0.97); }
-        .t-row:hover .badge   { background:rgba(59,159,255,0.18);color:#7ec8ff;border-color:rgba(59,159,255,0.35); }
+  .filters input { padding-left: 40px; }
+  .filters input::placeholder { color: var(--muted); }
+  .filters input:focus, .filters select:focus { border-color: hsl(213,94%,62%,0.5); }
 
-        .t-row > div {
-            padding:13px 20px;font-size:14px;
-            display:flex;align-items:center;justify-content:center;text-align:center;
-            position:relative;z-index:1;overflow:hidden;
-        }
-        .t-row > div:not(:last-child) { border-right:1px solid rgba(59,159,255,0.18); }
-        .t-row > div span { white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+  .select-wrap { position: relative; width: 200px; flex-shrink: 0; }
+  .select-wrap-sm { position: relative; width: 160px; flex-shrink: 0; }
 
-        .col-provider { font-size:12px;font-weight:500;font-style:italic;color:rgba(59,159,255,0.55);transition:color .15s; }
-        .t-row:hover .col-provider { color:rgba(59,159,255,0.75); }
-        .col-game { font-weight:500;color:rgba(240,244,255,0.82);transition:color .15s; }
-        .col-type { justify-content:center; }
+  .select-wrap select, .select-wrap-sm select { cursor: pointer; }
 
-        .badge {
-            display:inline-flex;align-items:center;
-            padding:4px 11px;border-radius:7px;
-            font-size:11px;font-weight:600;
-            background:linear-gradient(135deg,rgba(59,159,255,0.13),rgba(59,159,255,0.06));
-            color:rgba(59,159,255,0.72);border:1px solid rgba(59,159,255,0.20);
-            box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
-            transition:background .2s,color .2s,border-color .2s;
-            white-space:nowrap;
-        }
+  .select-arrow {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    pointer-events: none; color: hsl(213,94%,65%);
+  }
 
-        /* ── FOOTER ── */
-        .table-footer {
-            padding:10px 22px;font-size:12px;color:var(--muted);
-            border-top:1px solid rgba(59,159,255,0.08);
-            display:flex;align-items:center;gap:6px;
-            position:relative;z-index:1;
-        }
-        .table-footer b { color:rgba(59,159,255,0.90);font-weight:700;text-shadow:0 0 8px rgba(59,159,255,0.4); }
+  .select-arrow svg { width: 14px; height: 14px; display: block; }
 
-        /* ── STATES ── */
-        .state-box {
-            display:flex;flex-direction:column;align-items:center;
-            justify-content:center;gap:14px;padding:90px 20px;
-            text-align:center;color:var(--muted);
-        }
-        .state-icon {
-            width:68px;height:68px;border-radius:18px;
-            display:flex;align-items:center;justify-content:center;
-            font-size:26px;margin-bottom:4px;
-        }
-        .state-icon.blue { background:linear-gradient(135deg,rgba(59,159,255,0.15),rgba(30,100,220,0.08));border:1px solid rgba(59,159,255,0.25);box-shadow:0 0 30px rgba(59,159,255,0.20);color:var(--blue); }
-        .state-icon.red  { background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.25);box-shadow:0 0 24px rgba(239,68,68,0.15);color:#ef4444; }
-        .state-label { font-size:17px;font-weight:600;color:var(--text); }
-        .state-sub { font-size:13px;max-width:340px;line-height:1.6; }
-        .btn-retry {
-            margin-top:6px;height:40px;padding:0 22px;
-            border:1px solid rgba(255,255,255,0.10);border-radius:10px;
-            font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;
-            background:rgba(255,255,255,0.05);color:var(--text);
-            display:inline-flex;align-items:center;gap:7px;transition:background .15s;
-        }
-        .btn-retry:hover { background:rgba(255,255,255,0.09); }
+  .btn-csv {
+    height: 40px; padding: 0 16px; flex-shrink: 0;
+    background: linear-gradient(135deg, hsl(213,94%,55%,0.25), hsl(199,89%,50%,0.18));
+    border: 1px solid hsl(213,94%,62%,0.35);
+    border-radius: var(--radius);
+    color: hsl(213,94%,80%); font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 0 16px hsl(213,94%,55%,0.15);
+    transition: all 0.2s; white-space: nowrap;
+  }
 
-        /* ── ANIMATIONS ── */
-        @keyframes shimmer {
-            0%   { background-position:-200% center; }
-            100% { background-position: 200% center; }
-        }
-        @keyframes floatBlob {
-            0%,100% { transform:translateY(0)   scale(1); }
-            50%      { transform:translateY(-22px) scale(1.04); }
-        }
-        @keyframes spin { to { transform:rotate(360deg); } }
-        @keyframes fadeUp {
-            from { opacity:0;transform:translateY(7px); }
-            to   { opacity:1;transform:translateY(0); }
-        }
-        .spin { animation:spin 1s linear infinite; }
+  .btn-csv:hover { background: linear-gradient(135deg, hsl(213,94%,55%,0.35), hsl(199,89%,50%,0.28)); }
+  .btn-csv:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-csv svg { width: 15px; height: 15px; }
 
-        /* ── MOBILE ── */
-        @media(max-width:600px){
-            body{padding:14px 12px 50px;}
-            .header{height:auto;padding:16px 18px;}
-            .search-row{flex-direction:column;}
-            .btn-refresh{width:100%;justify-content:center;}
-            .t-head,.t-row,.prov-header{grid-template-columns:42% 1fr;}
-            .t-head div:last-child,.t-row>div:last-child{display:none;}
-        }
-    </style>
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    box-shadow: 0 0 0 1px hsl(213,94%,62%,0.06), 0 8px 40px hsl(213,94%,20%,0.3), 0 24px 80px hsl(222,50%,2%,0.7), inset 0 1px 0 hsl(213,94%,70%,0.12);
+    position: relative;
+  }
+
+  .table-top-rim {
+    position: absolute; top: 0; left: 32px; right: 32px; height: 1px; z-index: 5;
+    background: linear-gradient(90deg, transparent, hsl(213,94%,70%,0.5), hsl(199,89%,70%,0.5), transparent);
+  }
+
+  /* Column header */
+  .col-header {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: linear-gradient(180deg, hsl(213,50%,13%), hsl(218,44%,10%));
+    border-bottom: 1px solid hsl(213,94%,62%,0.2);
+    position: relative;
+  }
+
+  .col-header-cell {
+    padding: 16px 24px;
+    text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    position: relative;
+  }
+
+  .col-header-cell:not(:last-child) { border-right: 1px solid var(--divider); }
+
+  .col-header-cell .col-label {
+    font-size: 10px; font-weight: 900; letter-spacing: 0.25em; text-transform: uppercase;
+    color: hsl(213,94%,75%); position: relative; z-index: 1;
+  }
+
+  .col-header-cell .col-sub {
+    font-size: 9px; color: hsl(215,20%,38%); position: relative; z-index: 1;
+  }
+
+  .col-bottom-accent {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 48px; height: 1px;
+    background: linear-gradient(90deg, transparent, hsl(213,94%,62%,0.6), transparent);
+  }
+
+  /* Rows */
+  .row {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    border-bottom: 1px solid hsl(217,33%,10%);
+    transition: background 0.15s, box-shadow 0.15s;
+    position: relative; cursor: default;
+  }
+
+  .row:hover { background: var(--row-hover-color, transparent) !important; }
+
+  .row-cell {
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center;
+  }
+
+  .row-cell:not(:last-child) { border-right: 1px solid var(--divider); }
+
+  .provider-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-right: 8px;
+    opacity: 0.7; transition: opacity 0.15s, box-shadow 0.15s;
+  }
+
+  .provider-name {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+    transition: color 0.15s;
+  }
+
+  .game-name {
+    font-size: 14px; font-weight: 500;
+    color: hsl(210,40%,88%); transition: color 0.15s;
+  }
+
+  .type-badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 4px 12px; border-radius: 99px;
+    background: hsl(213,94%,62%,0.07);
+    border: 1px solid hsl(213,94%,62%,0.18);
+    color: hsl(213,94%,68%);
+    transition: all 0.15s;
+  }
+
+  .row:hover .type-badge {
+    background: hsl(213,94%,62%,0.15);
+    border-color: hsl(213,94%,62%,0.4);
+    color: hsl(213,94%,82%);
+    box-shadow: 0 0 8px hsl(213,94%,55%,0.2);
+  }
+
+  .row:hover .game-name { color: hsl(210,40%,98%); }
+  .row:hover .provider-dot { opacity: 1; }
+
+  /* Left accent bar */
+  .row-accent {
+    display: none;
+    position: absolute; left: 0; top: 0; bottom: 0; width: 2px; border-radius: 0 2px 2px 0;
+  }
+
+  .row:hover .row-accent { display: block; }
+
+  /* Empty state */
+  .empty {
+    padding: 96px 0; text-align: center;
+    color: var(--muted); font-size: 14px;
+  }
+
+  /* Skeleton */
+  .skeleton-row { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid hsl(217,33%,11%); }
+  .skeleton-cell { padding: 14px 24px; display: flex; justify-content: center; }
+  .skeleton-cell:not(:last-child) { border-right: 1px solid var(--divider); }
+  .skeleton-bar {
+    height: 14px; border-radius: 99px;
+    background: linear-gradient(90deg, hsl(217,33%,14%), hsl(213,40%,18%), hsl(217,33%,14%));
+    background-size: 200% 100%;
+    animation: skeleton 1.8s linear infinite;
+  }
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px;
+    border-top: 1px solid hsl(213,94%,62%,0.15);
+    background: linear-gradient(180deg, var(--card), hsl(222,50%,6%));
+  }
+
+  .page-info { font-size: 12px; color: var(--muted); }
+  .page-info b { color: hsl(213,94%,70%); font-weight: 700; }
+  .page-controls { display: flex; align-items: center; gap: 8px; }
+
+  .btn-page {
+    height: 32px; padding: 0 10px;
+    background: var(--input-bg);
+    border: 1px solid hsl(213,94%,62%,0.2);
+    border-radius: 8px;
+    color: hsl(213,94%,68%); font-size: 12px; font-family: inherit; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; gap: 4px;
+    transition: all 0.15s;
+  }
+
+  .btn-page:hover:not(:disabled) { border-color: hsl(213,94%,62%,0.4); color: hsl(213,94%,85%); }
+  .btn-page:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .page-indicator {
+    height: 30px; padding: 0 16px;
+    border: 1px solid hsl(213,94%,62%,0.3);
+    border-radius: 8px;
+    background: linear-gradient(135deg, hsl(213,94%,62%,0.12), hsl(199,89%,55%,0.08));
+    color: hsl(213,94%,80%); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center;
+  }
+</style>
 </head>
-
 <body>
 
-<div class="blob blob-1"></div>
-<div class="blob blob-2"></div>
-<div class="blob blob-3"></div>
+<div class="scan-line"></div>
 
-<div class="wrap">
-
-    <!-- HEADER -->
-    <div class="header">
-        <div class="logo">
-            <div class="logo-icon"><i class="fas fa-bolt"></i></div>
-            <div class="logo-text">
-                <h1>HOKIJITU</h1>
-                <p>Game Search Platform</p>
-            </div>
-        </div>
-        <div class="stat-box">
-            <i class="fas fa-trophy"></i>
-            <div>
-                <span class="stat-lbl">Total Games</span>
-                <span class="stat-val" id="totalGames">0</span>
-            </div>
-        </div>
+<!-- HEADER -->
+<header>
+  <div class="header-accent"></div>
+  <div class="header-inner">
+    <div class="logo-area">
+      <div class="logo-wrap">
+        <div class="logo-halo"></div>
+        <img class="logo-img"
+          src="data:image/webp;base64,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"
+          alt="HOKIJITU" />
+      </div>
+      <div class="brand">
+        <h1>SEARCH GAME HOKIJITU</h1>
+        <p>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="8" height="8" rx="1"/><rect x="14" y="2" width="8" height="8" rx="1"/><rect x="2" y="14" width="8" height="8" rx="1"/><rect x="14" y="14" width="8" height="8" rx="1"/></svg>
+          Game Catalog
+        </p>
+      </div>
     </div>
-
-    <!-- SEARCH -->
-    <div class="search-row">
-        <div class="search-field">
-            <i class="fas fa-search"></i>
-            <input
-                type="text"
-                id="searchInput"
-                placeholder="Cari Provider atau Nama Game..."
-                oninput="searchGame()"
-                onkeypress="if(event.key==='Enter')searchGame()"
-            >
-        </div>
-        <button class="btn-refresh" id="refreshBtn" onclick="loadData()">
-            <i class="fas fa-sync-alt" id="refreshIcon"></i>
-            Refresh Data
-        </button>
+    <div class="stats-badge">
+      <span class="hash">#</span>
+      <span class="count" id="total-count">0</span>
+      <span class="label">Games</span>
     </div>
+  </div>
+</header>
 
-    <!-- TABLE CARD -->
-    <div class="table-card">
-        <div class="t-head">
-            <div>Provider</div>
-            <div>Game Name</div>
-            <div>Type</div>
-        </div>
-
-        <div class="t-body" id="tableBody">
-            <div class="state-box">
-                <div class="state-icon blue"><i class="fas fa-spinner spin"></i></div>
-                <div class="state-label">Memuat data game...</div>
-                <div class="state-sub">Mohon tunggu sebentar</div>
-            </div>
-        </div>
-
-        <div class="table-footer" id="tableFooter" style="display:none">
-            <b id="resultCount">0</b>
-            <span id="resultLabel">total game</span>
-            <span id="providerInfo" style="color:rgba(255,255,255,0.25)"></span>
-        </div>
+<!-- MAIN -->
+<main>
+  <!-- Filters -->
+  <div class="filters">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search" placeholder="Cari nama game atau provider..." autocomplete="off" />
     </div>
+    <div class="select-wrap">
+      <select id="filter-provider">
+        <option value="">Semua Provider</option>
+      </select>
+      <span class="select-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <div class="select-wrap-sm">
+      <select id="filter-type">
+        <option value="">Semua Tipe</option>
+      </select>
+      <span class="select-arrow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+    <button class="btn-csv" id="btn-csv" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span id="csv-label">CSV</span>
+    </button>
+  </div>
 
-</div>
+  <!-- Table -->
+  <div class="table-card">
+    <div class="table-top-rim"></div>
+    <div class="col-header">
+      <div class="col-header-cell">
+        <span class="col-label">PROVIDER</span>
+        <span class="col-sub">Penyedia Game</span>
+        <div class="col-bottom-accent"></div>
+      </div>
+      <div class="col-header-cell">
+        <span class="col-label">NAMA GAME</span>
+        <span class="col-sub">Judul Permainan</span>
+        <div class="col-bottom-accent"></div>
+      </div>
+      <div class="col-header-cell">
+        <span class="col-label">TIPE</span>
+        <span class="col-sub">Kategori</span>
+        <div class="col-bottom-accent"></div>
+      </div>
+    </div>
+    <div id="table-body"></div>
+    <div id="pagination" class="pagination" style="display:none"></div>
+  </div>
+</main>
 
 <script>
-    const API_URL   = 'https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec';
-    const CACHE_KEY = 'hokijitu_cache_v2';
-    const CACHE_TTL = 5 * 60 * 1000;
+const GAS_URL = "https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec";
+const PAGE_SIZE = 50;
 
-    let allData   = [];
-    let isLoading = false;
+const PALETTE = [
+  [213,90,65],[175,72,54],[262,68,66],[160,62,52],
+  [196,82,60],[350,65,62],[38,80,58],[240,64,66],
+  [280,62,63],[25,78,60],[88,55,52],[330,60,60]
+];
 
-    /* ── CACHE ── */
-    function loadCache() {
-        try {
-            const raw = localStorage.getItem(CACHE_KEY);
-            if (!raw) return null;
-            const { data, ts } = JSON.parse(raw);
-            if (Date.now() - ts > CACHE_TTL) return null;
-            return data;
-        } catch { return null; }
-    }
-    function saveCache(data) {
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() })); }
-        catch { }
-    }
+function hashProvider(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % PALETTE.length;
+}
 
-    /* ── LOAD ── */
-    async function loadData(silent = false) {
-        if (isLoading) return;
-        isLoading = true;
+function providerColor(name) {
+  const [h,s,l] = PALETTE[hashProvider(name)];
+  return {
+    text:     `hsl(${h},${s}%,${l}%)`,
+    textHov:  `hsl(${h},${s}%,${l+14}%)`,
+    dot:      `hsl(${h},${s}%,${l}%)`,
+    dotGlow:  `hsl(${h},${s}%,${l}%,0.45)`,
+    rowHover: `hsl(${h},${s}%,${l}%,0.055)`,
+    accent:   `linear-gradient(180deg,hsl(${h},${s}%,${l+8}%,0.9),hsl(${h},${s}%,${l}%,0.7))`,
+    border:   `hsl(${h},${s}%,${l}%,0.22)`,
+  };
+}
 
-        const btn  = document.getElementById('refreshBtn');
-        const icon = document.getElementById('refreshIcon');
-        btn.disabled = true;
-        icon.classList.add('spin');
+let allGames = [];
+let filtered = [];
+let page = 1;
+let searchTimer = null;
 
-        if (!silent) showLoading();
+// State
+const state = { search: "", provider: "", type: "" };
 
-        try {
-            const res  = await fetch(API_URL);
-            const json = await res.json();
-            if (!json.success) throw new Error(json.error || 'API error');
+async function loadData() {
+  renderSkeleton();
+  try {
+    const resp = await fetch(GAS_URL);
+    const json = await resp.json();
+    if (!json.success) throw new Error(json.error || "Gagal memuat data");
+    allGames = json.data;
+    populateFilters();
+    applyFilters();
+  } catch (e) {
+    document.getElementById("table-body").innerHTML =
+      `<div class="empty">⚠️ Gagal memuat data. Coba refresh halaman.<br><small>${e.message}</small></div>`;
+  }
+}
 
-            allData = json.data;
-            saveCache(allData);
-            document.getElementById('totalGames').textContent = allData.length.toLocaleString();
-            searchGame();
+function populateFilters() {
+  const providers = [...new Set(allGames.map(g => g.provider))].sort();
+  const types     = [...new Set(allGames.map(g => g.type))].filter(Boolean).sort();
 
-        } catch (err) {
-            if (!silent || allData.length === 0) showError(err.message);
-        } finally {
-            isLoading = false;
-            btn.disabled = false;
-            icon.classList.remove('spin');
-        }
-    }
+  const pSel = document.getElementById("filter-provider");
+  providers.forEach(p => {
+    const opt = document.createElement("option");
+    opt.value = p; opt.textContent = p;
+    pSel.appendChild(opt);
+  });
 
-    /* ── SEARCH ── */
-    function searchGame() {
-        const kw = document.getElementById('searchInput').value.toLowerCase().trim();
-        const filtered = kw
-            ? allData.filter(r =>
-                r.provider.toLowerCase().includes(kw) ||
-                r.gameName.toLowerCase().includes(kw))
-            : allData;
+  const tSel = document.getElementById("filter-type");
+  types.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t; opt.textContent = t;
+    tSel.appendChild(opt);
+  });
+}
 
-        renderGrouped(filtered, !!kw);
-    }
+function applyFilters() {
+  const q = state.search.toLowerCase();
+  filtered = allGames.filter(g => {
+    if (q && !g.gameName.toLowerCase().includes(q) && !g.provider.toLowerCase().includes(q)) return false;
+    if (state.provider && g.provider !== state.provider) return false;
+    if (state.type && g.type !== state.type) return false;
+    return true;
+  });
+  page = 1;
+  render();
+}
 
-    /* ── RENDER GROUPED ── */
-    function renderGrouped(data, isSearch) {
-        const body   = document.getElementById('tableBody');
-        const footer = document.getElementById('tableFooter');
+function render() {
+  const total = filtered.length;
+  document.getElementById("total-count").textContent = total.toLocaleString("id");
 
-        if (data.length === 0) {
-            body.innerHTML = `
-                <div class="state-box">
-                    <div class="state-icon blue"><i class="fas fa-gamepad"></i></div>
-                    <div class="state-label">Game tidak ditemukan</div>
-                    <div class="state-sub">Coba kata kunci yang berbeda.</div>
-                </div>`;
-            footer.style.display = 'none';
-            return;
-        }
+  // CSV button
+  const btnCsv = document.getElementById("btn-csv");
+  const csvLabel = document.getElementById("csv-label");
+  btnCsv.disabled = total === 0;
+  csvLabel.textContent = total > 0 ? `CSV (${total.toLocaleString("id")})` : "CSV";
 
-        /* Group by provider (preserve order) */
-        const groups = new Map();
-        for (const g of data) {
-            if (!groups.has(g.provider)) groups.set(g.provider, []);
-            groups.get(g.provider).push(g);
-        }
+  if (total === 0) {
+    document.getElementById("table-body").innerHTML =
+      `<div class="empty">Tidak ada game yang sesuai filter.</div>`;
+    document.getElementById("pagination").style.display = "none";
+    return;
+  }
 
-        let html = '';
-        let delay = 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  page = Math.min(page, totalPages);
+  const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-        for (const [provider, games] of groups) {
-            /* Provider header */
-            html += `
-                <div class="prov-header" style="animation:fadeUp .2s ease ${delay}s both">
-                    <div class="prov-bar"></div>
-                    <div class="prov-icon"><i class="fas fa-layer-group"></i></div>
-                    <div class="prov-name">${esc(provider)}</div>
-                    <div class="prov-count">${games.length}</div>
-                    <div class="prov-line"></div>
-                </div>`;
-            delay = Math.min(delay + 0.04, 0.4);
+  const tbody = document.getElementById("table-body");
+  tbody.innerHTML = "";
 
-            /* Game rows */
-            for (const game of games) {
-                html += `
-                    <div class="t-row" style="animation-delay:${delay}s">
-                        <div class="col-provider"><span>${esc(game.provider)}</span></div>
-                        <div class="col-game"><span>${esc(game.gameName)}</span></div>
-                        <div class="col-type"><span class="badge">${esc(game.type)}</span></div>
-                    </div>`;
-                delay = Math.min(delay + 0.018, 0.55);
-            }
-        }
+  slice.forEach((game, i) => {
+    const isEven = i % 2 === 0;
+    const pc = providerColor(game.provider);
 
-        body.innerHTML = html;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.style.background = isEven ? "#0f1624" : "#0d1420";
+    row.style.setProperty("--row-hover-color", pc.rowHover);
 
-        document.getElementById('resultCount').textContent = data.length.toLocaleString();
-        document.getElementById('resultLabel').textContent  = isSearch ? 'game ditemukan' : 'total game';
-        document.getElementById('providerInfo').textContent = `· ${groups.size} provider`;
-        footer.style.display = 'flex';
-    }
+    row.innerHTML = `
+      <div class="row-accent" style="background:${pc.accent}"></div>
+      <div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">
+        <span class="provider-dot" style="background:${pc.dot};box-shadow:none" data-glow="${pc.dotGlow}"></span>
+        <span class="provider-name" style="color:${pc.text}" data-hover="${pc.textHov}">${escHtml(game.provider)}</span>
+      </div>
+      <div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">
+        <span class="game-name">${escHtml(game.gameName)}</span>
+      </div>
+      <div class="row-cell">
+        <span class="type-badge">${escHtml(game.type || "—")}</span>
+      </div>
+    `;
 
-    /* ── STATES ── */
-    function showLoading() {
-        document.getElementById('tableFooter').style.display = 'none';
-        document.getElementById('tableBody').innerHTML = `
-            <div class="state-box">
-                <div class="state-icon blue"><i class="fas fa-spinner spin"></i></div>
-                <div class="state-label">Memuat data game...</div>
-                <div class="state-sub">Mohon tunggu sebentar</div>
-            </div>`;
-    }
+    row.addEventListener("mouseenter", () => {
+      row.style.boxShadow = `inset 0 0 0 1px ${pc.border},0 2px 16px ${pc.dotGlow}`;
+      row.querySelector(".provider-dot").style.opacity = "1";
+      row.querySelector(".provider-dot").style.boxShadow = `0 0 6px ${pc.dotGlow}`;
+      row.querySelector(".provider-name").style.color = pc.textHov;
+    });
+    row.addEventListener("mouseleave", () => {
+      row.style.boxShadow = "none";
+      row.querySelector(".provider-dot").style.opacity = "0.7";
+      row.querySelector(".provider-dot").style.boxShadow = "none";
+      row.querySelector(".provider-name").style.color = pc.text;
+    });
 
-    function showError(msg) {
-        document.getElementById('tableFooter').style.display = 'none';
-        document.getElementById('tableBody').innerHTML = `
-            <div class="state-box">
-                <div class="state-icon red"><i class="fas fa-exclamation-triangle"></i></div>
-                <div class="state-label">Koneksi Gagal</div>
-                <div class="state-sub">${esc(msg)}</div>
-                <button class="btn-retry" onclick="loadData()">
-                    <i class="fas fa-redo"></i> Coba Lagi
-                </button>
-            </div>`;
-    }
+    tbody.appendChild(row);
+  });
 
-    function esc(s) {
-        return String(s)
-            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+  // Pagination
+  const pag = document.getElementById("pagination");
+  if (totalPages <= 1) {
+    pag.style.display = "none";
+    return;
+  }
 
-    /* ── INIT ── */
-    (function init() {
-        const cached = loadCache();
-        if (cached && cached.length > 0) {
-            allData = cached;
-            document.getElementById('totalGames').textContent = allData.length.toLocaleString();
-            searchGame();
-            loadData(true); // silent background refresh
-        } else {
-            loadData(false);
-        }
-    })();
+  pag.style.display = "flex";
+  pag.innerHTML = `
+    <p class="page-info">
+      Halaman <b>${page}</b> dari <b>${totalPages}</b> · Total <b>${total.toLocaleString("id")}</b> game
+    </p>
+    <div class="page-controls">
+      <button class="btn-page" id="p-first" ${page===1?"disabled":""}>«</button>
+      <button class="btn-page" id="p-prev" ${page===1?"disabled":""}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
+      <div class="page-indicator">${page} / ${totalPages}</div>
+      <button class="btn-page" id="p-next" ${page===totalPages?"disabled":""}>Next <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button class="btn-page" id="p-last" ${page===totalPages?"disabled":""}>»</button>
+    </div>
+  `;
+
+  document.getElementById("p-first").onclick = () => { page = 1; render(); window.scrollTo(0,0); };
+  document.getElementById("p-prev").onclick  = () => { page = Math.max(1, page-1); render(); window.scrollTo(0,0); };
+  document.getElementById("p-next").onclick  = () => { page = Math.min(totalPages, page+1); render(); window.scrollTo(0,0); };
+  document.getElementById("p-last").onclick  = () => { page = totalPages; render(); window.scrollTo(0,0); };
+}
+
+function renderSkeleton() {
+  const widths = [[52,60,28],[40,70,22],[58,55,32],[44,65,25]];
+  document.getElementById("table-body").innerHTML =
+    Array.from({length:14}).map((_,i) => {
+      const w = widths[i % widths.length];
+      return `<div class="skeleton-row">
+        <div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[0]}%"></div></div>
+        <div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[1]}%"></div></div>
+        <div class="skeleton-cell"><div class="skeleton-bar" style="width:${w[2]}%"></div></div>
+      </div>`;
+    }).join("");
+  document.getElementById("pagination").style.display = "none";
+}
+
+function escHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function downloadCSV() {
+  if (!filtered.length) return;
+  const header = ["Provider","Nama Game","Tipe"];
+  const lines = [
+    header.join(","),
+    ...filtered.map(g =>
+      [g.provider, g.gameName, g.type]
+        .map(v => `"${String(v??'').replace(/"/g,'""')}"`)
+        .join(",")
+    )
+  ];
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const hasFilter = state.search || state.provider || state.type;
+  a.download = `hokijitu-games${hasFilter?"-filtered":"-all"}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Events
+document.getElementById("search").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.search = e.target.value.trim(); applyFilters(); }, 300);
+});
+
+document.getElementById("filter-provider").addEventListener("change", e => {
+  state.provider = e.target.value; applyFilters();
+});
+
+document.getElementById("filter-type").addEventListener("change", e => {
+  state.type = e.target.value; applyFilters();
+});
+
+document.getElementById("btn-csv").addEventListener("click", downloadCSV);
+
+// Init
+loadData();
 </script>
 </body>
 </html>
