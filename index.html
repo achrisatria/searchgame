@@ -4,332 +4,436 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Search Game HOKIJITU</title>
-
-    <!-- ICON -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
         :root {
-            --bg-dark: #0a0a0f;
-            --bg-card: #13131a;
-            --bg-input: #1c1c26;
-
-            --text-primary: #ffffff;
-            --text-secondary: #9ca3af;
-            --text-muted: #6b7280;
-
-            --primary: #6366f1;
-            --accent: #8b5cf6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-
-            --border: #2d2d3a;
-            --radius: 12px;
-            --shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            --bg:        #07090f;
+            --bg-card:   #0c0f1a;
+            --border:    rgba(255,255,255,0.06);
+            --border-h:  rgba(255,255,255,0.10);
+            --blue:      #3b9fff;
+            --blue-dim:  rgba(59,159,255,0.15);
+            --blue-glow: rgba(59,159,255,0.35);
+            --text:      #f0f4ff;
+            --muted:     #5a6585;
+            --radius:    14px;
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-primary);
-            text-align:center;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
-            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 28px 16px 60px;
+            overflow-x: hidden;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: var(--bg-card);
-            border-radius: 24px;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            overflow: hidden;
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::before {
+            width: 600px; height: 500px;
+            top: -150px; left: 10%;
+            background: rgba(59,159,255,0.10);
+        }
+        body::after {
+            width: 500px; height: 400px;
+            bottom: -100px; right: 5%;
+            background: rgba(30,100,220,0.07);
         }
 
-        /* HEADER */
+        .wrap {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        /* ── HEADER ── */
         .header {
-            padding: 30px 40px;
-            border-bottom: 1px solid var(--border);
-            text-align:center;
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
+            padding: 18px 28px;
+            background: rgba(12,15,26,0.80);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(20px);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 16px;
         }
 
-        .header-title {
+        .logo {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 14px;
         }
 
-        .header-title i {
-            font-size: 32px;
-            color: var(--primary);
+        .logo-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            background: var(--blue-dim);
+            border: 1px solid rgba(59,159,255,0.30);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 22px var(--blue-glow);
+            color: var(--blue);
+            font-size: 20px;
         }
 
-        .header-title h1 {
-            font-size: 24px;
+        .logo-text h1 {
+            font-size: 22px;
             font-weight: 700;
+            letter-spacing: 1.5px;
+            background: linear-gradient(90deg, #fff 40%, rgba(255,255,255,0.55));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .header-stats {
-            display: flex;
-            gap: 30px;
-        }
-
-        .stat-item {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: var(--text-muted);
+        .logo-text p {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 2.5px;
             text-transform: uppercase;
+            color: var(--muted);
+            margin-top: 2px;
         }
 
-        /* SEARCH */
-        .search-box {
+        .stat-box {
             display: flex;
-            gap: 10px;
-            padding: 25px 40px;
-            background: rgba(0, 0, 0, 0.2);
             align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 18px;
+        }
+
+        .stat-box i { color: var(--blue); font-size: 14px; }
+
+        .stat-inner span:first-child {
+            display: block;
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .stat-inner span:last-child {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        /* ── SEARCH ── */
+        .search-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 18px;
             flex-wrap: wrap;
         }
 
-        .search-wrapper {
-            display: flex;
-            gap: 10px;
+        .search-field {
             flex: 1;
-            max-width: 500px;
+            min-width: 240px;
+            position: relative;
         }
 
-        .search-wrapper input {
-            flex: 1;
-            padding: 14px 20px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            background: var(--bg-input);
-            color: var(--text-primary);
+        .search-field i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
             font-size: 14px;
+            transition: color .2s;
         }
 
-        .search-wrapper input:focus {
+        .search-field:focus-within i { color: var(--blue); }
+
+        .search-field input {
+            width: 100%;
+            padding: 0 18px 0 44px;
+            height: 52px;
+            background: rgba(15,18,33,0.80);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.3);
+            transition: border-color .2s, box-shadow .2s;
         }
 
-        .btn-search,
-        .btn-refresh {
-            padding: 14px 28px;
+        .search-field input::placeholder { color: var(--muted); }
+
+        .search-field input:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 3px rgba(59,159,255,0.18);
+        }
+
+        .btn {
+            height: 52px;
+            padding: 0 28px;
             border: none;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: #fff;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
             font-size: 14px;
             font-weight: 600;
-            border-radius: var(--radius);
             cursor: pointer;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: transform .15s, box-shadow .15s, opacity .15s;
             white-space: nowrap;
         }
 
-        .btn-search:hover,
-        .btn-refresh:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+        .btn-primary {
+            background: linear-gradient(135deg, #2b8eff, #1a6eee);
+            color: #fff;
+            box-shadow: 0 0 22px rgba(43,142,255,0.40);
+            border-top: 1px solid rgba(255,255,255,0.18);
         }
 
-        /* TABLE */
-        .table-wrapper {
-            overflow-x: auto;
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(43,142,255,0.55); }
+        .btn-primary:active { transform: translateY(0); }
+        .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border-h);
+        }
+        .btn-outline:hover { background: rgba(255,255,255,0.05); }
+
+        /* ── TABLE ── */
+        .table-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .t-head {
+            display: grid;
+            grid-template-columns: 28% 1fr 16%;
+            background: rgba(255,255,255,0.025);
+            border-bottom: 1px solid var(--border-h);
         }
 
-        thead th {
-            padding: 18px 25px;
-            font-size: 12px;
-            font-weight: 600;
+        .t-head div {
+            padding: 14px 22px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
             text-transform: uppercase;
-            color: var(--text-muted);
-            background: rgba(0, 0, 0, 0.3);
-            border-bottom: 1px solid var(--border);
-            text-align: center;
-            position: sticky;
-            top: 0;
+            color: var(--muted);
         }
 
-        tbody td {
-            padding: 18px 25px;
-            border-bottom: 1px solid var(--border);
+        .t-head div:not(:last-child) {
+            border-right: 1px solid var(--border-h);
+        }
+
+        .t-head div:last-child { text-align: center; }
+
+        /* rows */
+        .t-body { min-height: 360px; }
+
+        .t-row {
+            display: grid;
+            grid-template-columns: 28% 1fr 16%;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background .15s;
+            animation: fadeUp .25s ease both;
+        }
+
+        .t-row:last-child { border-bottom: none; }
+        .t-row:hover { background: rgba(59,159,255,0.04); }
+        .t-row:hover .col-provider { color: var(--blue); }
+        .t-row:hover .badge { background: rgba(59,159,255,0.18); color: #7ec8ff; }
+
+        .t-row > div {
+            padding: 14px 22px;
             font-size: 14px;
+            display: flex;
+            align-items: center;
         }
 
-        tbody tr:hover td {
-            background: rgba(99, 102, 241, 0.05);
+        .t-row > div:not(:last-child) {
+            border-right: 1px solid rgba(255,255,255,0.04);
         }
 
         .col-provider {
             font-weight: 600;
-            color: var(--primary);
+            font-size: 13px;
+            color: rgba(59,159,255,0.80);
+            transition: color .15s;
         }
 
-        .col-game {
-            font-weight: 500;
+        .col-game { font-weight: 500; color: rgba(240,244,255,0.88); }
+
+        .col-type { justify-content: center; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            background: rgba(59,159,255,0.10);
+            color: rgba(59,159,255,0.70);
+            border: 1px solid rgba(59,159,255,0.18);
+            transition: background .15s, color .15s;
         }
 
-        /* MESSAGE */
-        .message-area {
-            padding: 60px 40px;
-        }
-
-        .loading {
+        /* ── STATES ── */
+        .state-box {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
-            color: var(--text-secondary);
+            justify-content: center;
+            gap: 14px;
+            padding: 80px 20px;
+            color: var(--muted);
+            text-align: center;
         }
 
-        .loading i {
-            font-size: 48px;
-            color: var(--primary);
-            animation: spin 1s linear infinite;
+        .state-icon {
+            width: 64px; height: 64px;
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px;
+            margin-bottom: 4px;
         }
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
+        .state-icon.blue {
+            background: rgba(59,159,255,0.12);
+            color: var(--blue);
         }
 
-        .error-msg {
+        .state-icon.red {
+            background: rgba(239,68,68,0.12);
+            color: #ef4444;
+        }
+
+        .state-label {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .state-sub { font-size: 13px; max-width: 360px; line-height: 1.6; }
+
+        /* ── FOOTER INFO ── */
+        .result-info {
+            padding: 10px 22px;
+            font-size: 12px;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 15px;
-            padding: 40px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: var(--radius);
-            color: var(--danger);
+            gap: 6px;
         }
 
-        /* MOBILE */
-        @media (max-width: 768px) {
-            body {
-                padding: 15px;
-            }
+        .result-info b { color: var(--blue); font-weight: 600; }
 
-            .header {
-                flex-direction: column;
-                gap: 20px;
-                padding: 20px;
-            }
+        /* ── ANIMATIONS ── */
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-            .search-box {
-                flex-direction: column;
-                padding: 20px;
-            }
-
-            .search-wrapper {
-                width: 100%;
-                flex-direction: column;
-            }
-
-            .btn-refresh {
-                width: 100%;
-                justify-content: center;
-            }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* SCROLLBAR */
-        ::-webkit-scrollbar {
-            width: 8px;
-        }
+        .spin { animation: spin 1s linear infinite; }
 
-        ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
-        }
+        /* ── SCROLLBAR ── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(59,159,255,0.25); border-radius: 6px; }
 
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
+        /* ── MOBILE ── */
+        @media (max-width: 600px) {
+            .header { padding: 16px 18px; }
+            .search-row { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .t-head, .t-row { grid-template-columns: 36% 1fr; }
+            .t-head div:last-child, .t-row > div:last-child { display: none; }
         }
     </style>
 </head>
 
 <body>
-<div class="container">
+<div class="wrap">
 
     <!-- HEADER -->
     <div class="header">
-        <div class="header-title">
-            <i class="fas fa-gamepad"></i>
-            <h1>Search Game HOKIJITU</h1>
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-bolt"></i></div>
+            <div class="logo-text">
+                <h1>HOKIJITU</h1>
+                <p>Game Search Platform</p>
+            </div>
         </div>
-
-        <div class="header-stats">
-            <div class="stat-item">
-                <div class="stat-value" id="totalGames">0</div>
-                <div class="stat-label">Total Games</div>
+        <div class="stat-box">
+            <i class="fas fa-trophy"></i>
+            <div class="stat-inner">
+                <span>Total Games</span>
+                <span id="totalGames">0</span>
             </div>
         </div>
     </div>
 
     <!-- SEARCH -->
-    <div class="search-box">
-        <div class="search-wrapper">
+    <div class="search-row">
+        <div class="search-field">
+            <i class="fas fa-search"></i>
             <input
                 type="text"
                 id="searchInput"
                 placeholder="Cari Provider atau Nama Game..."
+                oninput="searchGame()"
                 onkeypress="handleEnter(event)"
             >
-            <button class="btn-search" onclick="searchGame()">
-                <i class="fas fa-search"></i> Cari
-            </button>
         </div>
-
-        <button class="btn-refresh" onclick="loadData()">
-            <i class="fas fa-sync-alt"></i> Refresh
+        <button class="btn btn-primary" id="refreshBtn" onclick="loadData()">
+            <i class="fas fa-sync-alt" id="refreshIcon"></i>
+            Refresh Data
         </button>
     </div>
 
-    <!-- MESSAGE -->
-    <div id="messageArea"></div>
+    <!-- TABLE CARD -->
+    <div class="table-card">
+        <div class="t-head">
+            <div>Provider</div>
+            <div>Game Name</div>
+            <div>Type</div>
+        </div>
 
-    <!-- TABLE -->
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th>Provider</th>
-                    <th>Game Name</th>
-                    <th>Type</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
+        <div class="t-body" id="tableBody">
+            <div class="state-box">
+                <div class="state-icon blue"><i class="fas fa-spinner spin"></i></div>
+                <div class="state-label">Memuat data...</div>
+                <div class="state-sub">Mengambil daftar game terbaru</div>
+            </div>
+        </div>
+
+        <div class="result-info" id="resultInfo" style="display:none">
+            Menampilkan <b id="resultCount">0</b> game
+        </div>
     </div>
 
 </div>
@@ -337,103 +441,130 @@
 <script>
     const API_URL = 'https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec';
 
-    let allData = [];
+    let allData   = [];
+    let isLoading = false;
 
+    /* ── LOAD ── */
     async function loadData() {
-        const msg = document.getElementById('messageArea');
-        const tbody = document.getElementById('tableBody');
+        if (isLoading) return;
+        isLoading = true;
 
-        msg.innerHTML = `
-            <div class="message-area">
-                <div class="loading">
-                    <i class="fas fa-spinner"></i>
-                    <span>Loading...</span>
-                </div>
-            </div>
-        `;
+        const btn  = document.getElementById('refreshBtn');
+        const icon = document.getElementById('refreshIcon');
+        btn.disabled = true;
+        icon.classList.add('spin');
 
-        tbody.innerHTML = '';
+        showLoading();
 
         try {
-            const res = await fetch(API_URL);
+            const res  = await fetch(API_URL);
             const json = await res.json();
 
-            if (!json.success) {
-                throw new Error(json.error);
-            }
-
+            if (!json.success) throw new Error(json.error || 'API error');
             if (json.count === 0) {
-                msg.innerHTML = `
-                    <div class="message-area">
-                        <div class="error-msg">
-                            <i class="fas fa-folder-open"></i>
-                            <span>Data Kosong</span>
-                        </div>
-                    </div>
-                `;
+                showEmpty('Data kosong', 'Belum ada game tersedia.');
                 return;
             }
 
             allData = json.data;
-            msg.innerHTML = '';
-            render(allData);
-            updateStats();
+            document.getElementById('totalGames').textContent = allData.length.toLocaleString();
+            searchGame();
 
         } catch (err) {
-            msg.innerHTML = `
-                <div class="message-area">
-                    <div class="error-msg">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <span>${err.message}</span>
-                    </div>
-                </div>
-            `;
+            showError(err.message);
+        } finally {
+            isLoading = false;
+            btn.disabled = false;
+            icon.classList.remove('spin');
         }
     }
 
-    function render(data) {
-        document.getElementById('tableBody').innerHTML = data.map(row => `
-            <tr>
-                <td class="col-provider">${row.provider}</td>
-                <td class="col-game">${row.gameName}</td>
-                <td>${row.type}</td>
-            </tr>
-        `).join('');
-    }
-
-    function updateStats() {
-        document.getElementById('totalGames').textContent = allData.length;
-    }
-
+    /* ── SEARCH ── */
     function searchGame() {
-        const keyword = document.getElementById('searchInput')
-            .value
-            .toLowerCase()
-            .trim();
+        const kw = document.getElementById('searchInput').value.toLowerCase().trim();
+        const filtered = kw
+            ? allData.filter(r =>
+                r.provider.toLowerCase().includes(kw) ||
+                r.gameName.toLowerCase().includes(kw))
+            : allData;
 
-        if (keyword === '') {
-            render(allData);
-            return;
-        }
-
-        const filtered = allData.filter(row =>
-            row.provider.toLowerCase().includes(keyword) ||
-            row.gameName.toLowerCase().includes(keyword)
-        );
-
-        if (filtered.length === 0) {
-            alert('Game tidak ditemukan!');
-            render(allData);
-            return;
-        }
-
-        render(filtered);
+        renderRows(filtered);
     }
 
     function handleEnter(e) {
-        if (e.key === 'Enter') {
-            searchGame();
+        if (e.key === 'Enter') searchGame();
+    }
+
+    /* ── RENDER ── */
+    function renderRows(data) {
+        const body = document.getElementById('tableBody');
+        const info = document.getElementById('resultInfo');
+        const cnt  = document.getElementById('resultCount');
+
+        if (data.length === 0) {
+            body.innerHTML = `
+                <div class="state-box">
+                    <div class="state-icon blue"><i class="fas fa-gamepad"></i></div>
+                    <div class="state-label">Game tidak ditemukan</div>
+                    <div class="state-sub">Coba kata kunci yang berbeda.</div>
+                </div>`;
+            info.style.display = 'none';
+            return;
         }
+
+        body.innerHTML = data.map((row, i) => `
+            <div class="t-row" style="animation-delay:${Math.min(i * 0.025, 0.6)}s">
+                <div class="col-provider">${esc(row.provider)}</div>
+                <div class="col-game">${esc(row.gameName)}</div>
+                <div class="col-type"><span class="badge">${esc(row.type)}</span></div>
+            </div>
+        `).join('');
+
+        cnt.textContent  = data.length.toLocaleString();
+        info.style.display = 'flex';
+    }
+
+    /* ── STATES ── */
+    function showLoading() {
+        document.getElementById('resultInfo').style.display = 'none';
+        document.getElementById('tableBody').innerHTML = `
+            <div class="state-box">
+                <div class="state-icon blue"><i class="fas fa-spinner spin"></i></div>
+                <div class="state-label">Memuat data...</div>
+                <div class="state-sub">Mengambil daftar game terbaru</div>
+            </div>`;
+    }
+
+    function showEmpty(label, sub) {
+        document.getElementById('resultInfo').style.display = 'none';
+        document.getElementById('tableBody').innerHTML = `
+            <div class="state-box">
+                <div class="state-icon blue"><i class="fas fa-folder-open"></i></div>
+                <div class="state-label">${esc(label)}</div>
+                <div class="state-sub">${esc(sub)}</div>
+            </div>`;
+    }
+
+    function showError(msg) {
+        document.getElementById('resultInfo').style.display = 'none';
+        document.getElementById('tableBody').innerHTML = `
+            <div class="state-box">
+                <div class="state-icon red"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="state-label">Koneksi gagal</div>
+                <div class="state-sub">${esc(msg)}</div>
+                <button class="btn btn-outline" onclick="loadData()" style="margin-top:8px;height:40px;padding:0 20px;font-size:13px">
+                    <i class="fas fa-redo"></i> Coba lagi
+                </button>
+            </div>`;
+    }
+
+    /* ── ESCAPE HTML ── */
+    function esc(s) {
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
 
     loadData();
