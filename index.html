@@ -4,9 +4,10 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Search Game HOKIJITU</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
@@ -482,14 +483,19 @@
 </main>
 
 <script>
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec";
+const GAS_URL   = "https://script.google.com/macros/s/AKfycbzCZ37G6Xz57I75KKqUxj0BC5QXsQmuZiSLHLPpg_MKchuNic3-__e0WahuAtE-OHEONQ/exec";
 const PAGE_SIZE = 50;
+const CACHE_KEY = "hokijitu_games_cache";
+const CACHE_TTL = 30 * 60 * 1000; // 30 menit
 
 const PALETTE = [
   [213,90,65],[175,72,54],[262,68,66],[160,62,52],
   [196,82,60],[350,65,62],[38,80,58],[240,64,66],
   [280,62,63],[25,78,60],[88,55,52],[330,60,60]
 ];
+
+// Cache warna per provider agar tidak dihitung ulang tiap render
+const colorCache = Object.create(null);
 
 function hashProvider(name) {
   let h = 0;
@@ -498,8 +504,9 @@ function hashProvider(name) {
 }
 
 function providerColor(name) {
+  if (colorCache[name]) return colorCache[name];
   const [h,s,l] = PALETTE[hashProvider(name)];
-  return {
+  colorCache[name] = {
     text:     `hsl(${h},${s}%,${l}%)`,
     textHov:  `hsl(${h},${s}%,${l+14}%)`,
     dot:      `hsl(${h},${s}%,${l}%)`,
@@ -508,48 +515,86 @@ function providerColor(name) {
     accent:   `linear-gradient(180deg,hsl(${h},${s}%,${l+8}%,0.9),hsl(${h},${s}%,${l}%,0.7))`,
     border:   `hsl(${h},${s}%,${l}%,0.22)`,
   };
+  return colorCache[name];
 }
 
 let allGames = [];
-let filtered = [];
-let page = 1;
+let filtered  = [];
+let page      = 1;
 let searchTimer = null;
+const state   = { search: "", provider: "", type: "" };
 
-// State
-const state = { search: "", provider: "", type: "" };
+// ── Cache helpers ──────────────────────────────────────────
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch(_) {}
+}
 
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) { localStorage.removeItem(CACHE_KEY); return null; }
+    return data;
+  } catch(_) { return null; }
+}
+
+// ── Data ───────────────────────────────────────────────────
 async function loadData() {
+  // Tampilkan skeleton dulu
   renderSkeleton();
+
+  // Coba pakai cache dulu agar tidak nunggu GAS cold start
+  const cached = loadCache();
+  if (cached) {
+    allGames = cached;
+    populateFilters();
+    applyFilters();
+    // Refresh data di background tanpa skeleton
+    fetchFresh(false);
+    return;
+  }
+
+  // Tidak ada cache — fetch langsung
+  fetchFresh(true);
+}
+
+async function fetchFresh(showError) {
   try {
     const resp = await fetch(GAS_URL);
     const json = await resp.json();
     if (!json.success) throw new Error(json.error || "Gagal memuat data");
     allGames = json.data;
+    saveCache(allGames);
     populateFilters();
     applyFilters();
   } catch (e) {
-    document.getElementById("table-body").innerHTML =
-      `<div class="empty">⚠️ Gagal memuat data. Coba refresh halaman.<br><small>${e.message}</small></div>`;
+    if (showError) {
+      document.getElementById("table-body").innerHTML =
+        `<div class="empty">&#9888;&#65039; Gagal memuat data. Coba refresh halaman.<br><small>${e.message}</small></div>`;
+    }
   }
 }
 
+// ── Filters ────────────────────────────────────────────────
 function populateFilters() {
   const providers = [...new Set(allGames.map(g => g.provider))].sort();
   const types     = [...new Set(allGames.map(g => g.type))].filter(Boolean).sort();
 
   const pSel = document.getElementById("filter-provider");
-  providers.forEach(p => {
-    const opt = document.createElement("option");
-    opt.value = p; opt.textContent = p;
-    pSel.appendChild(opt);
-  });
+  // Hapus opsi lama kecuali yang pertama ("Semua Provider")
+  while (pSel.options.length > 1) pSel.remove(1);
+  const pFrag = document.createDocumentFragment();
+  providers.forEach(p => { const o = document.createElement("option"); o.value = o.textContent = p; pFrag.appendChild(o); });
+  pSel.appendChild(pFrag);
 
   const tSel = document.getElementById("filter-type");
-  types.forEach(t => {
-    const opt = document.createElement("option");
-    opt.value = t; opt.textContent = t;
-    tSel.appendChild(opt);
-  });
+  while (tSel.options.length > 1) tSel.remove(1);
+  const tFrag = document.createDocumentFragment();
+  types.forEach(t => { const o = document.createElement("option"); o.value = o.textContent = t; tFrag.appendChild(o); });
+  tSel.appendChild(tFrag);
 }
 
 function applyFilters() {
@@ -557,26 +602,27 @@ function applyFilters() {
   filtered = allGames.filter(g => {
     if (q && !g.gameName.toLowerCase().includes(q) && !g.provider.toLowerCase().includes(q)) return false;
     if (state.provider && g.provider !== state.provider) return false;
-    if (state.type && g.type !== state.type) return false;
+    if (state.type     && g.type     !== state.type)     return false;
     return true;
   });
   page = 1;
   render();
 }
 
+// ── Render ─────────────────────────────────────────────────
 function render() {
   const total = filtered.length;
   document.getElementById("total-count").textContent = total.toLocaleString("id");
 
-  // CSV button
-  const btnCsv = document.getElementById("btn-csv");
+  const btnCsv  = document.getElementById("btn-csv");
   const csvLabel = document.getElementById("csv-label");
   btnCsv.disabled = total === 0;
   csvLabel.textContent = total > 0 ? `CSV (${total.toLocaleString("id")})` : "CSV";
 
+  const tbody = document.getElementById("table-body");
+
   if (total === 0) {
-    document.getElementById("table-body").innerHTML =
-      `<div class="empty">Tidak ada game yang sesuai filter.</div>`;
+    tbody.innerHTML = `<div class="empty">Tidak ada game yang sesuai filter.</div>`;
     document.getElementById("pagination").style.display = "none";
     return;
   }
@@ -585,54 +631,36 @@ function render() {
   page = Math.min(page, totalPages);
   const slice = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const tbody = document.getElementById("table-body");
-  tbody.innerHTML = "";
-
-  slice.forEach((game, i) => {
+  // Bangun semua HTML sekaligus — jauh lebih cepat dari append per baris
+  const parts = [];
+  for (let i = 0; i < slice.length; i++) {
+    const game  = slice[i];
     const isEven = i % 2 === 0;
-    const pc = providerColor(game.provider);
-
-    const row = document.createElement("div");
-    row.className = "row";
-    row.style.background = isEven ? "#0f1624" : "#0d1420";
-    row.style.setProperty("--row-hover-color", pc.rowHover);
-
-    row.innerHTML = `
-      <div class="row-accent" style="background:${pc.accent}"></div>
-      <div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">
-        <span class="provider-dot" style="background:${pc.dot};box-shadow:none" data-glow="${pc.dotGlow}"></span>
-        <span class="provider-name" style="color:${pc.text}" data-hover="${pc.textHov}">${escHtml(game.provider)}</span>
-      </div>
-      <div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">
-        <span class="game-name">${escHtml(game.gameName)}</span>
-      </div>
-      <div class="row-cell">
-        <span class="type-badge">${escHtml(game.type || "—")}</span>
-      </div>
-    `;
-
-    row.addEventListener("mouseenter", () => {
-      row.style.boxShadow = `inset 0 0 0 1px ${pc.border},0 2px 16px ${pc.dotGlow}`;
-      row.querySelector(".provider-dot").style.opacity = "1";
-      row.querySelector(".provider-dot").style.boxShadow = `0 0 6px ${pc.dotGlow}`;
-      row.querySelector(".provider-name").style.color = pc.textHov;
-    });
-    row.addEventListener("mouseleave", () => {
-      row.style.boxShadow = "none";
-      row.querySelector(".provider-dot").style.opacity = "0.7";
-      row.querySelector(".provider-dot").style.boxShadow = "none";
-      row.querySelector(".provider-name").style.color = pc.text;
-    });
-
-    tbody.appendChild(row);
-  });
+    const pc    = providerColor(game.provider);
+    parts.push(
+      `<div class="row" style="background:${isEven ? "#0f1624" : "#0d1420"};--row-hover-color:${pc.rowHover}" ` +
+      `data-text="${encodeURIComponent(pc.text)}" data-texthov="${encodeURIComponent(pc.textHov)}" ` +
+      `data-dot="${encodeURIComponent(pc.dot)}" data-dotglow="${encodeURIComponent(pc.dotGlow)}" ` +
+      `data-border="${encodeURIComponent(pc.border)}" data-accent="${encodeURIComponent(pc.accent)}">` +
+        `<div class="row-accent" style="background:${pc.accent}"></div>` +
+        `<div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">` +
+          `<span class="provider-dot" style="background:${pc.dot};box-shadow:none"></span>` +
+          `<span class="provider-name" style="color:${pc.text}">${escHtml(game.provider)}</span>` +
+        `</div>` +
+        `<div class="row-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)">` +
+          `<span class="game-name">${escHtml(game.gameName)}</span>` +
+        `</div>` +
+        `<div class="row-cell">` +
+          `<span class="type-badge">${escHtml(game.type || "—")}</span>` +
+        `</div>` +
+      `</div>`
+    );
+  }
+  tbody.innerHTML = parts.join("");
 
   // Pagination
   const pag = document.getElementById("pagination");
-  if (totalPages <= 1) {
-    pag.style.display = "none";
-    return;
-  }
+  if (totalPages <= 1) { pag.style.display = "none"; return; }
 
   pag.style.display = "flex";
   pag.innerHTML = `
@@ -641,39 +669,67 @@ function render() {
     </p>
     <div class="page-controls">
       <button class="btn-page" id="p-first" ${page===1?"disabled":""}>«</button>
-      <button class="btn-page" id="p-prev" ${page===1?"disabled":""}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
+      <button class="btn-page" id="p-prev"  ${page===1?"disabled":""}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg> Prev</button>
       <div class="page-indicator">${page} / ${totalPages}</div>
       <button class="btn-page" id="p-next" ${page===totalPages?"disabled":""}>Next <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>
       <button class="btn-page" id="p-last" ${page===totalPages?"disabled":""}>»</button>
-    </div>
-  `;
+    </div>`;
 
-  document.getElementById("p-first").onclick = () => { page = 1; render(); window.scrollTo(0,0); };
-  document.getElementById("p-prev").onclick  = () => { page = Math.max(1, page-1); render(); window.scrollTo(0,0); };
-  document.getElementById("p-next").onclick  = () => { page = Math.min(totalPages, page+1); render(); window.scrollTo(0,0); };
-  document.getElementById("p-last").onclick  = () => { page = totalPages; render(); window.scrollTo(0,0); };
+  document.getElementById("p-first").onclick = () => { page = 1;           render(); window.scrollTo(0,0); };
+  document.getElementById("p-prev").onclick  = () => { page = Math.max(1, page-1);            render(); window.scrollTo(0,0); };
+  document.getElementById("p-next").onclick  = () => { page = Math.min(totalPages, page+1);   render(); window.scrollTo(0,0); };
+  document.getElementById("p-last").onclick  = () => { page = totalPages;  render(); window.scrollTo(0,0); };
 }
 
+// ── Event delegation untuk hover (1 listener, bukan 50×) ──
+document.getElementById("table-body").addEventListener("mouseover", e => {
+  const row = e.target.closest(".row");
+  if (!row) return;
+  const text    = decodeURIComponent(row.dataset.text);
+  const textHov = decodeURIComponent(row.dataset.texthov);
+  const dotGlow = decodeURIComponent(row.dataset.dotglow);
+  const border  = decodeURIComponent(row.dataset.border);
+  row.style.boxShadow = `inset 0 0 0 1px ${border},0 2px 16px ${dotGlow}`;
+  const dot = row.querySelector(".provider-dot");
+  const name = row.querySelector(".provider-name");
+  if (dot)  { dot.style.opacity = "1"; dot.style.boxShadow = `0 0 6px ${dotGlow}`; }
+  if (name) { name.style.color = textHov; }
+  row._savedText = text;
+});
+
+document.getElementById("table-body").addEventListener("mouseout", e => {
+  const row = e.target.closest(".row");
+  if (!row || row.contains(e.relatedTarget)) return;
+  row.style.boxShadow = "none";
+  const dot  = row.querySelector(".provider-dot");
+  const name = row.querySelector(".provider-name");
+  if (dot)  { dot.style.opacity = "0.7"; dot.style.boxShadow = "none"; }
+  if (name && row._savedText) { name.style.color = row._savedText; }
+});
+
+// ── Skeleton ───────────────────────────────────────────────
 function renderSkeleton() {
   const widths = [[52,60,28],[40,70,22],[58,55,32],[44,65,25]];
-  document.getElementById("table-body").innerHTML =
-    Array.from({length:14}).map((_,i) => {
-      const w = widths[i % widths.length];
-      return `<div class="skeleton-row">
-        <div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[0]}%"></div></div>
-        <div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[1]}%"></div></div>
-        <div class="skeleton-cell"><div class="skeleton-bar" style="width:${w[2]}%"></div></div>
-      </div>`;
-    }).join("");
+  const rows = Array.from({length:14}, (_,i) => {
+    const w = widths[i % widths.length];
+    return `<div class="skeleton-row">` +
+      `<div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[0]}%"></div></div>` +
+      `<div class="skeleton-cell" style="border-right:1px solid hsl(213,94%,62%,0.12)"><div class="skeleton-bar" style="width:${w[1]}%"></div></div>` +
+      `<div class="skeleton-cell"><div class="skeleton-bar" style="width:${w[2]}%"></div></div>` +
+    `</div>`;
+  });
+  document.getElementById("table-body").innerHTML = rows.join("");
   document.getElementById("pagination").style.display = "none";
 }
 
+// ── Escape ─────────────────────────────────────────────────
 function escHtml(s) {
   return String(s ?? "")
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 
+// ── CSV ────────────────────────────────────────────────────
 function downloadCSV() {
   if (!filtered.length) return;
   const header = ["Provider","Nama Game","Tipe"];
@@ -686,16 +742,15 @@ function downloadCSV() {
     )
   ];
   const blob = new Blob(["\uFEFF" + lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
   a.href = url;
-  const hasFilter = state.search || state.provider || state.type;
-  a.download = `hokijitu-games${hasFilter?"-filtered":"-all"}.csv`;
+  a.download = `hokijitu-games${(state.search||state.provider||state.type)?"-filtered":"-all"}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-// Events
+// ── Events ─────────────────────────────────────────────────
 document.getElementById("search").addEventListener("input", e => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => { state.search = e.target.value.trim(); applyFilters(); }, 300);
@@ -711,7 +766,7 @@ document.getElementById("filter-type").addEventListener("change", e => {
 
 document.getElementById("btn-csv").addEventListener("click", downloadCSV);
 
-// Init
+// ── Init ───────────────────────────────────────────────────
 loadData();
 </script>
 </body>
