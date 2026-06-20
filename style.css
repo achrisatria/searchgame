@@ -292,8 +292,8 @@ main {
    TABLE
    =========================================================== */
 .table-card {
-  background: var(--card);
-  border: 1px solid hsl(207, 16%, 45%, 0.15);
+  background: hsl(222deg 55.66% 13.01%);
+  border: 2px solid hsl(207, 16%, 45%, 0.15);
   border-radius: 18px; overflow: hidden;
   box-shadow:
     inset 0 1px 0 hsl(207, 25%, 70%, 0.06),
