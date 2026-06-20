@@ -123,7 +123,7 @@ header {
 
 .logo-wrap {
   position: relative;
-  width: 44px; height: 44px;
+  width: 10px; height: 10px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
