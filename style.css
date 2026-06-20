@@ -139,11 +139,13 @@ header {
   animation: float-glow 4s ease-in-out infinite;
 }
 
-.logo-icon {
-  font-size: 5px;
-  position: relative; z-index: 1;
-  filter: drop-shadow(0 0 8px hsl(207, 43%, 60%, 0.55));
-}
+.logo-img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    position: relative;
+    z-index: 10;
+    filter: drop-shadow(0 0 8px hsl(213, 94%, 65%, 0.7)) brightness(1.08);
 
 .brand h1 {
   font-family: 'Fraunces', Georgia, serif;
