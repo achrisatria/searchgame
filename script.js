@@ -22,18 +22,18 @@ const CONFIG = {
    (provider yang sama selalu dapat warna yang sama).
 ----------------------------------------------------------- */
 const PALETTE = [
-  [213, 90, 65],  // biru
-  [175, 72, 54],  // teal
-  [262, 68, 66],  // ungu
-  [160, 62, 52],  // hijau-mint
-  [196, 82, 60],  // cyan
-  [350, 65, 62],  // pink/merah muda
-  [38, 80, 58],   // amber
-  [240, 64, 66],  // indigo
-  [280, 62, 63],  // magenta
-  [25, 78, 60],   // orange
-  [88, 55, 52],   // hijau-lemon
-  [330, 60, 60],  // rose
+  [213, 70, 62],  // sapphire
+  [174, 55, 48],  // emerald-teal
+  [262, 55, 64],  // amethyst
+  [152, 50, 48],  // emerald
+  [195, 65, 56],  // turquoise
+  [345, 55, 60],  // ruby
+  [39, 70, 56],   // champagne-gold
+  [235, 55, 64],  // indigo
+  [275, 52, 60],  // orchid
+  [22, 68, 56],   // copper
+  [85, 42, 48],   // olive
+  [330, 50, 58],  // rose-gold
 ];
 
 // Cache warna per provider supaya tidak dihitung ulang setiap render
@@ -290,7 +290,7 @@ function render() {
     // value yang ada koma/quote tetap aman di HTML attribute.
     parts[i] =
       `<div class="row" ` +
-        `style="background:${isEven ? "#0f1624" : "#0d1420"};--row-hover-color:${pc.rowHover}" ` +
+        `style="background:${isEven ? "#11151d" : "#0c0e13"};--row-hover-color:${pc.rowHover}" ` +
         `data-text="${encodeURIComponent(pc.text)}" ` +
         `data-texthov="${encodeURIComponent(pc.textHov)}" ` +
         `data-dot="${encodeURIComponent(pc.dot)}" ` +
