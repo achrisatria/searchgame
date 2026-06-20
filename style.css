@@ -123,27 +123,28 @@ header {
   position: relative; z-index: 1;
 }
 
-.logo-area { display: flex; align-items: center; gap: 16px; }
+  .logo-area { display: flex; align-items: center; gap: 16px; }
 
-.logo-wrap {
-  position: relative;
-  width: 44px; height: 44px;
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+  .logo-wrap {
+    position: relative;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
 
-.logo-halo {
-  position: absolute; inset: 0; border-radius: 50%;
-  background: radial-gradient(circle, hsl(207, 43%, 55%, 0.28), hsl(226, 78%, 55%, 0.12) 70%, transparent);
-  filter: blur(11px);
-  animation: float-glow 4s ease-in-out infinite;
-}
+  .logo-halo {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: hsl(213,94%,55%,0.18);
+    filter: blur(10px);
+    animation: float-glow 3s ease-in-out infinite;
+  }
 
-.logo-img {
-  font-size: 5px;
-  position: relative; z-index: 1;
-  filter: drop-shadow(0 0 8px hsl(207, 43%, 60%, 0.55));
-}
+  .logo-img {
+    width: 40px; height: 40px;
+    object-fit: contain;
+    position: relative; z-index: 1;
+    filter: drop-shadow(0 0 8px hsl(213,94%,65%,0.7)) brightness(1.08);
+  }
 
 .brand h1 {
   font-family: 'Fraunces', Georgia, serif;
