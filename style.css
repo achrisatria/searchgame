@@ -139,7 +139,7 @@ header {
   animation: float-glow 4s ease-in-out infinite;
 }
 
-.logo-icon {
+.logo-img {
   font-size: 24px;
   position: relative; z-index: 1;
   filter: drop-shadow(0 0 8px hsl(207, 43%, 60%, 0.55));
