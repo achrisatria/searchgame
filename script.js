@@ -375,7 +375,7 @@ function render() {
     // value yang ada koma/quote tetap aman di HTML attribute.
     parts[i] =
       `<div class="row" ` +
-        `style="background:${isEven ? "#11151d" : "#0c0e13"};--row-hover-color:${pc.rowHover}" ` +
+        `style="background:${isEven ? "hsl(221,43%,18%)" : "hsl(221,47%,15%)"};--row-hover-color:${pc.rowHover}" ` +
         `data-text="${encodeURIComponent(pc.text)}" ` +
         `data-texthov="${encodeURIComponent(pc.textHov)}" ` +
         `data-dot="${encodeURIComponent(pc.dot)}" ` +
