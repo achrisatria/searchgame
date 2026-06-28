@@ -45,6 +45,13 @@
         <span class="count" id="totalCount">0</span>
         <span class="label">Games</span>
       </div>
+      <button class="btn-crosscheck" id="btnCrosscheck">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l3 3L22 4"/>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+        </svg>
+        Crosscheck
+      </button>
       <button class="btn-add" id="btnAddGame">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
           <line x1="12" y1="5" x2="12" y2="19"/>
@@ -126,7 +133,122 @@
 
 </main>
 
+<!-- ===================== MODAL CROSSCHECK ===================== -->
+<div class="modal-overlay hidden" id="modalCrosscheckOverlay">
+  <div class="modal modal-crosscheck" role="dialog" aria-modal="true" aria-labelledby="crosscheckTitle">
+    <div class="modal-header">
+      <h2 id="crosscheckTitle">Crosscheck Permainan</h2>
+      <button class="btn-close-modal" id="btnCloseCrosscheck" aria-label="Tutup">✕</button>
+    </div>
+
+    <!-- STEP 1: Input -->
+    <div id="crosscheckStep1">
+      <div class="modal-body">
+        <p class="crosscheck-hint">
+          Tempel daftar nama permainan di bawah ini (satu nama per baris). Sistem akan menemukan permainan yang <strong>belum terdata</strong> di dashboard.
+        </p>
+        <div class="form-group" style="margin-bottom:0">
+          <label for="crosscheckInput">Daftar Nama Permainan</label>
+          <textarea id="crosscheckInput" class="crosscheck-textarea" placeholder="Contoh:&#10;Sweet Bonanza&#10;Gates of Olympus&#10;Starlight Princess&#10;..."></textarea>
+          <div class="crosscheck-counter"><span id="crosscheckLineCount">0</span> nama terdeteksi</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="btnCancelCrosscheck">Batal</button>
+        <button type="button" class="btn-submit" id="btnRunCrosscheck">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          Crosscheck Sekarang
+        </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Hasil -->
+    <div id="crosscheckStep2" class="hidden">
+      <div class="crosscheck-result-header">
+        <div class="crosscheck-stat crosscheck-stat-missing">
+          <span class="crosscheck-stat-num" id="statMissing">0</span>
+          <span class="crosscheck-stat-label">Belum Terdata</span>
+        </div>
+        <div class="crosscheck-stat-divider"></div>
+        <div class="crosscheck-stat crosscheck-stat-found">
+          <span class="crosscheck-stat-num" id="statFound">0</span>
+          <span class="crosscheck-stat-label">Sudah Ada</span>
+        </div>
+        <div class="crosscheck-stat-divider"></div>
+        <div class="crosscheck-stat crosscheck-stat-total">
+          <span class="crosscheck-stat-num" id="statTotal">0</span>
+          <span class="crosscheck-stat-label">Total Input</span>
+        </div>
+      </div>
+
+      <!-- Tab -->
+      <div class="crosscheck-tabs">
+        <button class="crosscheck-tab active" id="tabMissing" data-tab="missing">
+          <span class="tab-dot tab-dot-missing"></span>
+          Belum Terdata <span class="tab-badge" id="badgeMissing">0</span>
+        </button>
+        <button class="crosscheck-tab" id="tabFound" data-tab="found">
+          <span class="tab-dot tab-dot-found"></span>
+          Sudah Ada <span class="tab-badge tab-badge-found" id="badgeFound">0</span>
+        </button>
+      </div>
+
+      <!-- List: Missing -->
+      <div id="panelMissing" class="crosscheck-panel">
+        <div class="crosscheck-panel-actions">
+          <button class="btn-select-all" id="btnSelectAll">Pilih Semua</button>
+          <span class="crosscheck-panel-hint">Pilih game yang ingin ditambahkan</span>
+        </div>
+        <div class="crosscheck-list" id="missingList"></div>
+
+        <!-- Form tambah batch -->
+        <div class="crosscheck-batch-form hidden" id="batchForm">
+          <div class="batch-form-title">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="color:hsl(207,43%,70%)">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Lengkapi info untuk <strong id="batchSelectedCount">0</strong> game yang dipilih
+          </div>
+          <div class="batch-form-row">
+            <div class="form-group" style="flex:1;margin:0">
+              <label for="batchProvider">Provider</label>
+              <input type="text" id="batchProvider" list="batchProviderList" placeholder="Contoh: Pragmatic Play" />
+              <datalist id="batchProviderList"></datalist>
+              <span class="field-error" id="batchProviderError"></span>
+            </div>
+            <div class="form-group" style="flex:1;margin:0">
+              <label for="batchTipe">Tipe Game</label>
+              <input type="text" id="batchTipe" list="batchTipeList" placeholder="Contoh: Slot" />
+              <datalist id="batchTipeList"></datalist>
+              <span class="field-error" id="batchTipeError"></span>
+            </div>
+          </div>
+          <button class="btn-batch-add" id="btnBatchAdd">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Tambahkan ke Dashboard
+          </button>
+        </div>
+      </div>
+
+      <!-- List: Found -->
+      <div id="panelFound" class="crosscheck-panel hidden">
+        <div class="crosscheck-list" id="foundList"></div>
+      </div>
+
+      <div class="modal-footer" style="border-top:1px solid hsl(207,16%,50%,0.12)">
+        <button type="button" class="btn-cancel" id="btnCrosscheck2Back">← Ulangi</button>
+        <button type="button" class="btn-cancel" id="btnCloseCrosscheck2">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL TAMBAH GAME ===================== -->
+
 <div class="modal-overlay hidden" id="modalOverlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-header">
