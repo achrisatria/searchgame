@@ -619,9 +619,254 @@ main {
 
 .toast-error { border-left-color: var(--error); }
 
+
 /* ===========================================================
-   AKSESIBILITAS & POLISH KECIL
+   TOMBOL CROSSCHECK (HEADER)
    =========================================================== */
+.btn-crosscheck {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 42px; padding: 0 20px;
+  background: linear-gradient(180deg, hsl(152, 26%, 11%), hsl(152, 30%, 8%));
+  border: 1px solid hsl(150, 40%, 45%, 0.45);
+  border-radius: var(--radius-sm);
+  color: hsl(150, 50%, 68%); font-family: inherit; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 hsl(150, 40%, 65%, 0.12), 0 8px 24px hsl(222, 40%, 2%, 0.5);
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
+}
+.btn-crosscheck:hover {
+  background: linear-gradient(180deg, hsl(150, 34%, 22%, 0.3), hsl(152, 30%, 9%));
+  border-color: hsl(150, 44%, 52%, 0.7);
+  color: hsl(150, 55%, 80%);
+}
+.btn-crosscheck:active { transform: translateY(1px); }
+
+/* ===========================================================
+   MODAL CROSSCHECK — OVERRIDE LEBAR
+   =========================================================== */
+.modal-crosscheck {
+  max-width: 620px !important;
+}
+
+/* ===========================================================
+   STEP 1 — TEXTAREA INPUT
+   =========================================================== */
+.crosscheck-hint {
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+  margin-bottom: 18px;
+}
+.crosscheck-hint strong { color: hsl(355, 70%, 65%); font-weight: 600; }
+
+.crosscheck-textarea {
+  width: 100%; min-height: 180px; padding: 14px;
+  background: var(--input-bg);
+  border: 1px solid hsl(220, 15%, 30%, 0.4);
+  border-radius: var(--radius-sm);
+  color: var(--text); font-family: inherit; font-size: 14px; line-height: 1.7;
+  outline: none; resize: vertical;
+  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.crosscheck-textarea:focus {
+  border-color: hsl(207, 34%, 55%, 0.55);
+  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12);
+}
+.crosscheck-textarea::placeholder { color: var(--muted); }
+
+.crosscheck-counter {
+  margin-top: 7px; font-size: 11px; color: var(--muted); text-align: right;
+}
+.crosscheck-counter span { color: hsl(207, 43%, 70%); font-weight: 700; }
+
+/* ===========================================================
+   STEP 2 — RESULT HEADER (STATISTIK)
+   =========================================================== */
+.crosscheck-result-header {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid hsl(207, 16%, 50%, 0.12);
+  background: linear-gradient(180deg, hsl(222, 24%, 10%), hsl(222, 26%, 8%));
+}
+.crosscheck-stat {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 18px 12px; gap: 4px;
+}
+.crosscheck-stat-num {
+  font-size: 28px; font-weight: 800;
+  font-variant-numeric: tabular-nums; line-height: 1;
+}
+.crosscheck-stat-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted);
+}
+.crosscheck-stat-missing .crosscheck-stat-num { color: hsl(355, 70%, 65%); }
+.crosscheck-stat-found   .crosscheck-stat-num { color: hsl(150, 55%, 52%); }
+.crosscheck-stat-total   .crosscheck-stat-num { color: hsl(207, 43%, 72%); }
+.crosscheck-stat-divider {
+  width: 1px; margin: 14px 0;
+  background: hsl(207, 16%, 50%, 0.15);
+}
+
+/* ===========================================================
+   STEP 2 — TAB
+   =========================================================== */
+.crosscheck-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid hsl(207, 16%, 50%, 0.12);
+  padding: 0 24px;
+  background: hsl(222, 24%, 9%);
+}
+.crosscheck-tab {
+  display: flex; align-items: center; gap: 8px;
+  height: 44px; padding: 0 16px;
+  background: transparent; border: none; border-bottom: 2px solid transparent;
+  color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.crosscheck-tab:hover { color: hsl(210, 12%, 85%); }
+.crosscheck-tab.active {
+  color: hsl(210, 12%, 94%);
+  border-bottom-color: hsl(207, 43%, 62%);
+}
+.tab-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+}
+.tab-dot-missing { background: hsl(355, 70%, 62%); box-shadow: 0 0 6px hsl(355, 70%, 62%, 0.5); }
+.tab-dot-found   { background: hsl(150, 55%, 50%); box-shadow: 0 0 6px hsl(150, 55%, 50%, 0.5); }
+.tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 18px; padding: 0 6px; border-radius: 99px;
+  background: hsl(355, 60%, 30%, 0.35);
+  border: 1px solid hsl(355, 60%, 45%, 0.3);
+  color: hsl(355, 70%, 70%); font-size: 10px; font-weight: 700;
+}
+.tab-badge-found {
+  background: hsl(150, 50%, 22%, 0.35);
+  border-color: hsl(150, 50%, 38%, 0.3);
+  color: hsl(150, 55%, 62%);
+}
+
+/* ===========================================================
+   STEP 2 — PANEL & LIST
+   =========================================================== */
+.crosscheck-panel { max-height: 340px; overflow-y: auto; }
+
+.crosscheck-panel-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px 8px;
+}
+.crosscheck-panel-hint { font-size: 11px; color: var(--muted); }
+
+.btn-select-all {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  color: hsl(207, 43%, 72%); background: none; border: none;
+  cursor: pointer; padding: 4px 0;
+  text-decoration: underline; text-underline-offset: 3px;
+  transition: color 0.15s;
+}
+.btn-select-all:hover { color: hsl(207, 50%, 85%); }
+
+.crosscheck-list { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+
+/* Item "Belum Terdata" */
+.cc-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  user-select: none;
+}
+.cc-item:hover { background: hsl(207, 19%, 50%, 0.06); border-color: hsl(207, 19%, 50%, 0.12); }
+.cc-item.selected {
+  background: hsl(207, 28%, 40%, 0.1);
+  border-color: hsl(207, 34%, 55%, 0.3);
+}
+.cc-checkbox {
+  width: 16px; height: 16px; border-radius: 5px; flex-shrink: 0;
+  border: 1.5px solid hsl(220, 15%, 40%, 0.6);
+  display: flex; align-items: center; justify-content: center;
+  background: transparent;
+  transition: background 0.12s, border-color 0.12s;
+}
+.cc-item.selected .cc-checkbox {
+  background: hsl(207, 43%, 56%);
+  border-color: hsl(207, 43%, 56%);
+}
+.cc-checkbox-tick {
+  width: 8px; height: 8px; fill: none;
+  stroke: #fff; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transition: opacity 0.1s;
+}
+.cc-item.selected .cc-checkbox-tick { opacity: 1; }
+.cc-item-name {
+  font-size: 14px; font-weight: 500; color: hsl(210, 8%, 90%); flex: 1;
+}
+
+/* Item "Sudah Ada" */
+.cc-found-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: 10px;
+}
+.cc-found-check {
+  width: 18px; height: 18px; flex-shrink: 0;
+  color: hsl(150, 55%, 50%);
+}
+.cc-found-name { font-size: 14px; color: hsl(210, 8%, 85%); flex: 1; }
+.cc-found-provider {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 9px; border-radius: 99px;
+  background: hsl(207, 19%, 50%, 0.06);
+  border: 1px solid hsl(207, 19%, 55%, 0.15);
+  color: hsl(207, 34%, 70%);
+}
+
+/* ===========================================================
+   BATCH ADD FORM
+   =========================================================== */
+.crosscheck-batch-form {
+  margin: 8px 12px 0;
+  padding: 16px;
+  border-radius: 12px;
+  background: hsl(222, 26%, 10%);
+  border: 1px solid hsl(207, 34%, 55%, 0.2);
+  box-shadow: inset 0 1px 0 hsl(207, 34%, 70%, 0.06);
+}
+.batch-form-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: hsl(210, 10%, 75%); margin-bottom: 14px;
+  font-weight: 500;
+}
+.batch-form-title strong { color: hsl(207, 43%, 75%); }
+.batch-form-row {
+  display: flex; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.batch-form-row .form-group { flex: 1; min-width: 160px; }
+
+.btn-batch-add {
+  width: 100%; height: 40px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(180deg, hsl(150, 26%, 18%), hsl(150, 30%, 12%));
+  border: 1px solid hsl(150, 40%, 42%, 0.5);
+  border-radius: var(--radius-sm);
+  color: hsl(150, 50%, 70%); font-family: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 hsl(150, 40%, 60%, 0.1);
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-batch-add:hover {
+  background: linear-gradient(180deg, hsl(150, 35%, 24%), hsl(150, 30%, 14%));
+  border-color: hsl(150, 44%, 52%, 0.75);
+  color: hsl(150, 55%, 80%);
+}
+.btn-batch-add:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Scrollbar di dalam panel */
+.crosscheck-panel::-webkit-scrollbar { width: 6px; }
+.crosscheck-panel::-webkit-scrollbar-thumb { background: hsl(207, 22%, 35%, 0.45); border-radius: 99px; }
+
 :focus-visible { outline: 2px solid hsl(207, 40%, 60%); outline-offset: 2px; }
 
 ::selection { background: hsl(207, 40%, 55%, 0.35); color: #fff; }
