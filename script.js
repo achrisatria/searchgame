@@ -766,7 +766,7 @@ function toggleSelectAll() {
       item.classList.add("selected");
       ccState.selectedItems.add(Number(item.dataset.idx));
     });
-    els.btnSelectAll.textContent = "Batal Semua";
+    els.btnSelectAll.textContent = "Pilih Semua";
   } else {
     ccState.selectedItems.clear();
     items.forEach((item) => item.classList.remove("selected"));
@@ -785,7 +785,7 @@ function updateBatchFormVisibility() {
   }
   // Sinkronkan teks tombol "Pilih Semua"
   if (ccState.selectedItems.size === ccState.missingGames.length && ccState.missingGames.length > 0) {
-    els.btnSelectAll.textContent = "Batal Semua";
+    els.btnSelectAll.textContent = "Pilih Semua";
     ccState.allSelected = true;
   } else {
     els.btnSelectAll.textContent = "Pilih Semua";
