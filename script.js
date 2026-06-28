@@ -625,7 +625,10 @@ function parseCrosscheckInput(raw) {
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => {
-      if (!l || seen.has(l.toLowerCase())) return false;
+      if (!l) return false;
+      // Abaikan baris yang mengandung kata "logo" (di posisi mana pun, case-insensitive)
+      if (/logo/i.test(l)) return false;
+      if (seen.has(l.toLowerCase())) return false;
       seen.add(l.toLowerCase());
       return true;
     });
