@@ -69,6 +69,25 @@ let page = 1;
 let searchTimer = null;
 const state = { search: "", provider: "", type: "" };
 
+/* -----------------------------------------------------------
+   OPTIMASI PERFORMA
+   - collator: 1 instance Intl.Collator dipakai ulang. Memanggil
+     a.localeCompare(b, ...) membuat mesin locale BARU tiap perbandingan;
+     pada sort data ribuan ini sangat berat. Collator dibuat sekali saja.
+   - indexGame: simpan versi lowercase nama & provider sebagai properti
+     NON-ENUMERABLE (_ln, _lp). Non-enumerable = otomatis diabaikan
+     JSON.stringify, jadi TIDAK ikut tersimpan ke cache / terkirim ke server.
+     Tujuannya: search tidak perlu .toLowerCase() ulang tiap ketukan.
+----------------------------------------------------------- */
+const collator = new Intl.Collator("id", { sensitivity: "base" });
+
+function indexGame(g) {
+  if (!g || g._ln !== undefined) return;
+  Object.defineProperty(g, "_ln", { value: (g.namaGame || "").toLowerCase(), writable: true, configurable: true });
+  Object.defineProperty(g, "_lp", { value: (g.provider || "").toLowerCase(), writable: true, configurable: true });
+}
+function indexGames(arr) { for (let i = 0; i < arr.length; i++) indexGame(arr[i]); }
+
 /* ===========================================================
    REFERENSI DOM
    =========================================================== */
@@ -207,6 +226,7 @@ function loadData() {
   const cached = loadCache();
   if (cached) {
     allGames = cached;
+    indexGames(allGames);
     populateFilters();
     applyFilters();
     // Refresh dari server tanpa skeleton — biar terasa cepat
@@ -223,6 +243,7 @@ async function fetchFresh(showErrorOnFail) {
     const json = await resp.json();
     if (!json.success) throw new Error(json.message || "Gagal memuat data");
     allGames = json.data || [];
+    indexGames(allGames);
     saveCache(allGames);
     populateFilters();
     applyFilters();
@@ -251,12 +272,20 @@ function loadCache() {
   }
 }
 
+let _cacheTimer = null;
 function saveCache(data) {
-  try {
-    localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
-  } catch (_) {
-    // Storage penuh — abaikan, tidak fatal
-  }
+  // JSON.stringify untuk data ribuan game itu berat & sinkron (blok UI).
+  // Ditunda ke "idle" berikutnya supaya render/tabel tampil dulu, baru cache
+  // ditulis di belakang layar. clearTimeout = gabungkan banyak panggilan
+  // beruntun (mis. saat batch add) jadi 1 penulisan saja.
+  clearTimeout(_cacheTimer);
+  _cacheTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+    } catch (_) {
+      // Storage penuh — abaikan, tidak fatal
+    }
+  }, 0);
 }
 
 /* ===========================================================
@@ -276,9 +305,7 @@ function populateFilters() {
 }
 
 function uniqSorted(arr) {
-  return [...new Set(arr.filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, "id", { sensitivity: "base" })
-  );
+  return [...new Set(arr.filter(Boolean))].sort(collator.compare);
 }
 
 function fillSelect(selectEl, values, defaultLabel, currentValue) {
@@ -293,16 +320,23 @@ function fillSelect(selectEl, values, defaultLabel, currentValue) {
    =========================================================== */
 function applyFilters() {
   const q = state.search.toLowerCase();
+  const fProvider = state.provider;
+  const fType = state.type;
 
   filtered = allGames.filter((g) => {
-    if (state.provider && g.provider !== state.provider) return false;
-    if (state.type && g.tipeGame !== state.type) return false;
-    if (q && !g.namaGame.toLowerCase().includes(q) && !g.provider.toLowerCase().includes(q)) return false;
+    if (fProvider && g.provider !== fProvider) return false;
+    if (fType && g.tipeGame !== fType) return false;
+    if (q) {
+      // Pakai versi lowercase yang sudah dihitung sekali (lihat indexGame),
+      // bukan .toLowerCase() ulang tiap game tiap ketukan.
+      if (g._ln === undefined) indexGame(g);
+      if (!g._ln.includes(q) && !g._lp.includes(q)) return false;
+    }
     return true;
   });
 
-  // Urut A-Z berdasarkan Provider
-  filtered.sort((a, b) => a.provider.localeCompare(b.provider, "id", { sensitivity: "base" }));
+  // Urut A-Z berdasarkan Provider (collator dipakai ulang, jauh lebih cepat)
+  filtered.sort((a, b) => collator.compare(a.provider, b.provider));
 
   page = 1;
   render();
@@ -490,7 +524,9 @@ function handleAddGame(e) {
       if (!json.success) throw new Error(json.message || "Gagal menyimpan data");
 
       // Optimistic update — langsung muncul tanpa nunggu refetch
-      allGames.push({ provider, namaGame, tipeGame });
+      const newGame = { provider, namaGame, tipeGame };
+      indexGame(newGame);
+      allGames.push(newGame);
       saveCache(allGames);
       populateFilters();
       applyFilters();
@@ -766,7 +802,7 @@ function toggleSelectAll() {
       item.classList.add("selected");
       ccState.selectedItems.add(Number(item.dataset.idx));
     });
-    els.btnSelectAll.textContent = "Pilih Semua";
+    els.btnSelectAll.textContent = "Batal Semua";
   } else {
     ccState.selectedItems.clear();
     items.forEach((item) => item.classList.remove("selected"));
@@ -785,7 +821,7 @@ function updateBatchFormVisibility() {
   }
   // Sinkronkan teks tombol "Pilih Semua"
   if (ccState.selectedItems.size === ccState.missingGames.length && ccState.missingGames.length > 0) {
-    els.btnSelectAll.textContent = "Pilih Semua";
+    els.btnSelectAll.textContent = "Batal Semua";
     ccState.allSelected = true;
   } else {
     els.btnSelectAll.textContent = "Pilih Semua";
@@ -832,7 +868,9 @@ async function handleBatchAdd() {
       const json = await res.json();
       if (!json.success) throw new Error(json.message);
       // Optimistic: langsung tambah ke allGames
-      allGames.push({ provider, namaGame, tipeGame });
+      const addedGame = { provider, namaGame, tipeGame };
+      indexGame(addedGame);
+      allGames.push(addedGame);
       successCount++;
     } catch (_) {
       failCount++;
