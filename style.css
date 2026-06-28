@@ -7,21 +7,21 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: hsl(222, 30%, 5%);
-  --hdr: hsl(222, 28%, 7%);
-  --metal: hsl(207, 43%, 60%);
-  --metal-dim: hsl(207, 43%, 60%, 0.14);
-  --sapphire: hsl(226, 85%, 60%);
-  --text: hsl(210, 10%, 95%);
-  --muted: hsl(220, 12%, 50%);
-  --card: hsl(222, 26%, 8%);
-  --row-even: hsl(222, 26%, 8%);
-  --row-odd: hsl(222, 24%, 6.5%);
-  --divider: hsl(207, 16%, 50%, 0.08);
-  --border: hsl(207, 19%, 50%, 0.18);
-  --input-bg: hsl(222, 30%, 5%);
-  --error: hsl(355, 70%, 58%);
-  --success: hsl(150, 55%, 48%);
+  --bg: hsl(221, 47%, 14%);
+  --hdr: hsl(221, 45%, 16%);
+  --metal: hsl(210, 85%, 70%);
+  --metal-dim: hsl(210, 85%, 70%, 0.16);
+  --sapphire: hsl(214, 96%, 64%);
+  --text: hsl(210, 32%, 97%);
+  --muted: hsl(213, 26%, 70%);
+  --card: hsl(221, 44%, 17%);
+  --row-even: hsl(221, 43%, 18%);
+  --row-odd: hsl(221, 47%, 15%);
+  --divider: hsl(210, 45%, 78%, 0.13);
+  --border: hsl(210, 58%, 72%, 0.24);
+  --input-bg: hsl(221, 50%, 12%);
+  --error: hsl(355, 82%, 67%);
+  --success: hsl(150, 62%, 55%);
   --radius: 14px;
   --radius-sm: 10px;
 }
@@ -41,9 +41,9 @@ body::before {
   content: '';
   position: fixed; inset: 0; pointer-events: none; z-index: 0;
   background:
-    radial-gradient(ellipse 75% 38% at 50% -8%, hsl(207, 34%, 30%, 0.14) 0%, transparent 70%),
-    radial-gradient(ellipse 60% 32% at 85% 85%, hsl(226, 68%, 22%, 0.16) 0%, transparent 62%),
-    radial-gradient(ellipse 50% 30% at 6% 68%, hsl(207, 25%, 25%, 0.08) 0%, transparent 60%);
+    radial-gradient(ellipse 80% 42% at 50% -8%, hsl(212, 78%, 52%, 0.20) 0%, transparent 72%),
+    radial-gradient(ellipse 62% 34% at 85% 85%, hsl(224, 80%, 56%, 0.18) 0%, transparent 64%),
+    radial-gradient(ellipse 54% 32% at 6% 68%, hsl(204, 70%, 55%, 0.12) 0%, transparent 62%);
 }
 
 /* Layer 2: grid mesh super halus + grain/film texture (sentuhan material premium) */
@@ -100,12 +100,12 @@ body::after {
    =========================================================== */
 header {
   position: sticky; top: 0; z-index: 30;
-  background: linear-gradient(180deg, hsl(222, 28%, 7%, 0.97) 0%, hsl(222, 30%, 5%, 0.94) 100%);
+  background: linear-gradient(180deg, hsl(221, 45%, 16%, 0.97) 0%, hsl(221, 47%, 14%, 0.94) 100%);
   border-bottom: 1px solid hsl(207, 25%, 50%, 0.15);
   box-shadow:
     0 1px 0 hsl(207, 31%, 60%, 0.12),
-    0 4px 32px hsl(222, 40%, 2%, 0.3),
-    0 20px 50px hsl(222, 40%, 2%, 0.5);
+    0 4px 32px hsl(221, 62%, 6%, 0.3),
+    0 20px 50px hsl(221, 62%, 6%, 0.5);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -171,9 +171,9 @@ header {
 .stats-badge {
   display: flex; align-items: center; gap: 8px;
   padding: 9px 16px; border-radius: 99px;
-  background: hsl(222, 26%, 9%);
+  background: hsl(221, 44%, 18%);
   border: 1px solid hsl(207, 34%, 55%, 0.3);
-  box-shadow: inset 0 1px 0 hsl(207, 37%, 70%, 0.12), 0 0 0 1px hsl(222, 30%, 4%, 0.4);
+  box-shadow: inset 0 1px 0 hsl(207, 37%, 70%, 0.12), 0 0 0 1px hsl(221, 58%, 8%, 0.4);
 }
 
 .stats-badge .hash  { font-size: 13px; color: hsl(207, 37%, 60%); font-weight: 700; }
@@ -183,17 +183,17 @@ header {
 .btn-add {
   display: inline-flex; align-items: center; gap: 8px;
   height: 42px; padding: 0 20px;
-  background: linear-gradient(180deg, hsl(222, 22%, 11%), hsl(222, 26%, 8%));
+  background: linear-gradient(180deg, hsl(214, 60%, 24%), hsl(221, 44%, 17%));
   border: 1px solid hsl(207, 34%, 55%, 0.45);
   border-radius: var(--radius-sm);
   color: hsl(207, 43%, 75%); font-family: inherit; font-size: 13px; font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 hsl(207, 37%, 70%, 0.15), 0 8px 24px hsl(222, 40%, 2%, 0.5);
+  box-shadow: inset 0 1px 0 hsl(207, 37%, 70%, 0.15), 0 8px 24px hsl(221, 62%, 6%, 0.5);
   transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
 }
 .btn-add:hover {
-  background: linear-gradient(180deg, hsl(207, 34%, 30%, 0.25), hsl(222, 26%, 9%));
+  background: linear-gradient(180deg, hsl(207, 34%, 30%, 0.25), hsl(221, 44%, 18%));
   border-color: hsl(207, 40%, 60%, 0.7);
   color: hsl(207, 50%, 85%);
 }
@@ -212,13 +212,13 @@ main {
    FILTERS
    =========================================================== */
 .filters {
-  background: linear-gradient(135deg, hsl(222, 24%, 9%, 0.92), hsl(222, 26%, 10%, 0.85));
+  background: linear-gradient(135deg, hsl(221, 43%, 18%, 0.92), hsl(221, 44%, 19%, 0.85));
   border: 1px solid hsl(207, 19%, 50%, 0.15);
   border-radius: 16px;
   padding: 18px; margin-bottom: 26px;
   display: flex; flex-wrap: wrap; gap: 12px;
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 50px hsl(222, 40%, 2%, 0.4), inset 0 1px 0 hsl(207, 25%, 70%, 0.08);
+  box-shadow: 0 20px 50px hsl(221, 62%, 6%, 0.4), inset 0 1px 0 hsl(207, 25%, 70%, 0.08);
   position: relative; overflow: hidden;
 }
 
@@ -245,7 +245,7 @@ main {
   border-radius: var(--radius-sm);
   color: var(--text); font-family: inherit; font-size: 14px;
   outline: none; transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5);
+  box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5);
   appearance: none; -webkit-appearance: none;
 }
 
@@ -255,7 +255,7 @@ main {
 .filters input:focus,
 .filters select:focus {
   border-color: hsl(207, 34%, 55%, 0.55);
-  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12);
+  box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12);
 }
 
 .select-wrap    { position: relative; width: 200px; flex-shrink: 0; }
@@ -265,7 +265,7 @@ main {
 .select-wrap-sm select { cursor: pointer; }
 
 .select-wrap select option,
-.select-wrap-sm select option { background: hsl(222, 30%, 7%); color: var(--text); }
+.select-wrap-sm select option { background: hsl(221, 45%, 16%); color: var(--text); }
 
 .select-arrow {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
@@ -276,7 +276,7 @@ main {
 
 .btn-csv {
   height: 42px; padding: 0 18px; flex-shrink: 0;
-  background: hsl(222, 26%, 9%);
+  background: hsl(221, 44%, 18%);
   border: 1px solid hsl(207, 31%, 55%, 0.35);
   border-radius: var(--radius-sm);
   color: hsl(207, 34%, 72%); font-family: inherit; font-size: 14px; font-weight: 600;
@@ -292,13 +292,13 @@ main {
    TABLE
    =========================================================== */
 .table-card {
-  background: hsl(222deg 55.66% 13.01%);
+  background: hsl(221deg 48% 19%);
   border: 2px solid hsl(207, 16%, 45%, 0.15);
   border-radius: 18px; overflow: hidden;
   box-shadow:
     inset 0 1px 0 hsl(207, 25%, 70%, 0.06),
-    0 30px 70px hsl(222, 40%, 2%, 0.55),
-    0 2px 0 hsl(222, 40%, 2%, 0.3);
+    0 30px 70px hsl(221, 62%, 6%, 0.55),
+    0 2px 0 hsl(221, 62%, 6%, 0.3);
   position: relative;
 }
 
@@ -310,7 +310,7 @@ main {
 /* Column header */
 .col-header {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  background: linear-gradient(180deg, hsl(222, 24%, 11%), hsl(222, 26%, 8%));
+  background: linear-gradient(180deg, hsl(220, 45%, 21%), hsl(221, 44%, 17%));
   border-bottom: 1px solid hsl(207, 19%, 50%, 0.18);
   position: relative;
 }
@@ -342,7 +342,7 @@ main {
 /* Rows */
 .row {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  border-bottom: 1px solid hsl(222, 20%, 12%);
+  border-bottom: 1px solid hsl(221, 33%, 27%);
   transition: background 0.15s, box-shadow 0.15s;
   position: relative; cursor: default;
 }
@@ -421,7 +421,7 @@ main {
 /* Skeleton loader */
 .skeleton-row {
   display: grid; grid-template-columns: repeat(3, 1fr);
-  border-bottom: 1px solid hsl(222, 20%, 11%);
+  border-bottom: 1px solid hsl(221, 33%, 26%);
 }
 
 .skeleton-cell { padding: 15px 24px; display: flex; justify-content: center; }
@@ -429,7 +429,7 @@ main {
 
 .skeleton-bar {
   height: 14px; border-radius: 99px;
-  background: linear-gradient(90deg, hsl(222, 20%, 12%), hsl(207, 19%, 22%), hsl(222, 20%, 12%));
+  background: linear-gradient(90deg, hsl(221, 33%, 27%), hsl(207, 19%, 22%), hsl(221, 33%, 27%));
   background-size: 200% 100%;
   animation: skeleton 1.8s linear infinite;
 }
@@ -442,7 +442,7 @@ main {
   flex-wrap: wrap; gap: 12px;
   padding: 18px 24px;
   border-top: 1px solid hsl(207, 16%, 50%, 0.12);
-  background: linear-gradient(180deg, var(--card), hsl(222, 28%, 6%));
+  background: linear-gradient(180deg, var(--card), hsl(221, 47%, 15%));
 }
 
 .page-info { font-size: 12px; color: var(--muted); }
@@ -452,7 +452,7 @@ main {
 
 .btn-page {
   height: 34px; padding: 0 11px;
-  background: hsl(222, 26%, 9%);
+  background: hsl(221, 44%, 18%);
   border: 1px solid hsl(220, 15%, 30%, 0.4);
   border-radius: 8px;
   color: hsl(210, 12%, 80%); font-size: 12px; font-family: inherit; font-weight: 600;
@@ -477,7 +477,7 @@ main {
    =========================================================== */
 .modal-overlay {
   position: fixed; inset: 0;
-  background: hsl(222, 40%, 2%, 0.78);
+  background: hsl(221, 62%, 6%, 0.78);
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
   display: flex; align-items: center; justify-content: center;
@@ -485,12 +485,12 @@ main {
 }
 
 .modal {
-  background: linear-gradient(160deg, hsl(222, 24%, 9%, 0.98), hsl(222, 28%, 7%, 0.97));
+  background: linear-gradient(160deg, hsl(221, 43%, 18%, 0.98), hsl(221, 45%, 16%, 0.97));
   border: 1px solid hsl(207, 22%, 50%, 0.22);
   border-radius: 18px;
   width: 100%; max-width: 460px;
   box-shadow:
-    0 30px 80px hsl(222, 40%, 2%, 0.6),
+    0 30px 80px hsl(221, 62%, 6%, 0.6),
     inset 0 1px 0 hsl(207, 28%, 70%, 0.1);
   position: relative; overflow: hidden;
 }
@@ -545,11 +545,11 @@ main {
   border-radius: var(--radius-sm);
   color: var(--text); font-family: inherit; font-size: 14px;
   outline: none;
-  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5);
+  box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-group input:focus { border-color: hsl(207, 34%, 55%, 0.55); box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12); }
+.form-group input:focus { border-color: hsl(207, 34%, 55%, 0.55); box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12); }
 .form-group input.input-error { border-color: var(--error); }
 .form-group input::placeholder { color: var(--muted); }
 
@@ -575,20 +575,20 @@ main {
 }
 
 .btn-cancel {
-  background: hsl(222, 26%, 9%);
+  background: hsl(221, 44%, 18%);
   border: 1px solid hsl(220, 15%, 30%, 0.4);
   color: var(--text);
 }
 .btn-cancel:hover { border-color: hsl(220, 15%, 40%, 0.6); }
 
 .btn-submit {
-  background: linear-gradient(180deg, hsl(222, 22%, 12%), hsl(222, 26%, 9%));
+  background: linear-gradient(180deg, hsl(214, 60%, 25%), hsl(221, 44%, 18%));
   border: 1px solid hsl(207, 34%, 55%, 0.5);
   color: hsl(207, 43%, 80%);
   box-shadow: inset 0 1px 0 hsl(207, 34%, 70%, 0.15);
 }
 .btn-submit:hover:not(:disabled) {
-  background: linear-gradient(180deg, hsl(207, 31%, 28%, 0.3), hsl(222, 26%, 10%));
+  background: linear-gradient(180deg, hsl(207, 31%, 28%, 0.3), hsl(221, 44%, 19%));
   border-color: hsl(207, 40%, 62%, 0.75);
   color: hsl(207, 50%, 88%);
 }
@@ -607,12 +607,12 @@ main {
 .toast {
   padding: 15px 19px;
   min-width: 260px; max-width: 360px;
-  background: linear-gradient(160deg, hsl(222, 24%, 10%, 0.98), hsl(222, 28%, 8%, 0.96));
+  background: linear-gradient(160deg, hsl(221, 44%, 19%, 0.98), hsl(221, 45%, 17%, 0.96));
   border: 1px solid hsl(207, 19%, 50%, 0.22);
   border-left: 3px solid var(--success);
   border-radius: 12px;
   color: var(--text); font-size: 13px;
-  box-shadow: 0 16px 40px hsl(222, 40%, 2%, 0.55);
+  box-shadow: 0 16px 40px hsl(221, 62%, 6%, 0.55);
   backdrop-filter: blur(14px);
   animation: toast-in 0.25s ease-out;
 }
@@ -632,7 +632,7 @@ main {
   color: hsl(150, 50%, 68%); font-family: inherit; font-size: 13px; font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 hsl(150, 40%, 65%, 0.12), 0 8px 24px hsl(222, 40%, 2%, 0.5);
+  box-shadow: inset 0 1px 0 hsl(150, 40%, 65%, 0.12), 0 8px 24px hsl(221, 62%, 6%, 0.5);
   transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
 }
 .btn-crosscheck:hover {
@@ -665,12 +665,12 @@ main {
   border-radius: var(--radius-sm);
   color: var(--text); font-family: inherit; font-size: 14px; line-height: 1.7;
   outline: none; resize: vertical;
-  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5);
+  box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .crosscheck-textarea:focus {
   border-color: hsl(207, 34%, 55%, 0.55);
-  box-shadow: inset 0 2px 10px hsl(222, 40%, 2%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12);
+  box-shadow: inset 0 2px 10px hsl(221, 62%, 6%, 0.5), 0 0 0 3px hsl(207, 34%, 55%, 0.12);
 }
 .crosscheck-textarea::placeholder { color: var(--muted); }
 
@@ -685,7 +685,7 @@ main {
 .crosscheck-result-header {
   display: flex; align-items: stretch;
   border-bottom: 1px solid hsl(207, 16%, 50%, 0.12);
-  background: linear-gradient(180deg, hsl(222, 24%, 10%), hsl(222, 26%, 8%));
+  background: linear-gradient(180deg, hsl(221, 44%, 19%), hsl(221, 44%, 17%));
 }
 .crosscheck-stat {
   flex: 1; display: flex; flex-direction: column;
@@ -715,7 +715,7 @@ main {
   display: flex; gap: 0;
   border-bottom: 1px solid hsl(207, 16%, 50%, 0.12);
   padding: 0 24px;
-  background: hsl(222, 24%, 9%);
+  background: hsl(221, 43%, 18%);
 }
 .crosscheck-tab {
   display: flex; align-items: center; gap: 8px;
@@ -830,7 +830,7 @@ main {
   margin: 8px 12px 0;
   padding: 16px;
   border-radius: 12px;
-  background: hsl(222, 26%, 10%);
+  background: hsl(221, 44%, 19%);
   border: 1px solid hsl(207, 34%, 55%, 0.2);
   box-shadow: inset 0 1px 0 hsl(207, 34%, 70%, 0.06);
 }
@@ -874,7 +874,7 @@ main {
 html { scrollbar-color: hsl(207, 22%, 40%, 0.55) transparent; scrollbar-width: thin; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background-color: hsl(207, 22%, 40%, 0.45); border-radius: 99px; border: 2px solid hsl(222, 30%, 5%); }
+::-webkit-scrollbar-thumb { background-color: hsl(207, 22%, 40%, 0.45); border-radius: 99px; border: 2px solid hsl(221, 47%, 14%); }
 ::-webkit-scrollbar-thumb:hover { background-color: hsl(207, 31%, 50%, 0.65); }
 
 @media (prefers-reduced-motion: reduce) {
@@ -908,7 +908,7 @@ html { scrollbar-color: hsl(207, 22%, 40%, 0.55) transparent; scrollbar-width: t
     grid-template-columns: 1fr;
     padding: 14px 16px;
     gap: 8px;
-    border-bottom: 1px solid hsl(222, 20%, 12%);
+    border-bottom: 1px solid hsl(221, 33%, 27%);
   }
 
   .row-cell {
