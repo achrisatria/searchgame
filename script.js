@@ -9,7 +9,7 @@
    kamu yang sudah di-deploy.
 ----------------------------------------------------------- */
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbxAvjNc46PyO8xDL-08G4IVW9HVwcOLT7S1TytqYVVgZYIKrmDzuBuAhMY8gyb1E4eI/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbyrIL3bRsVURTlKGaafNhsAuIzEJ5FIAR_VSkDZ3JIY7J32EU1ZMnvey7JCLFY_q-uV/exec",
   PAGE_SIZE: 50,
   CACHE_KEY: "dpp_games_cache_v2",
   CACHE_TTL_MS: 30 * 60 * 1000, // cache "segar" selama 30 menit
@@ -48,7 +48,7 @@ function hashProvider(name) {
 function providerColor(name) {
   if (colorCache[name]) return colorCache[name];
   const [h, s, l] = PALETTE[hashProvider(name)];
-  colorCache[name] = {
+  const c = {
     text:     `hsl(${h},${s}%,${l}%)`,
     textHov:  `hsl(${h},${s}%,${l + 14}%)`,
     dot:      `hsl(${h},${s}%,${l}%)`,
@@ -57,7 +57,19 @@ function providerColor(name) {
     accent:   `linear-gradient(180deg,hsl(${h},${s}%,${l + 8}%,0.9),hsl(${h},${s}%,${l}%,0.7))`,
     border:   `hsl(${h},${s}%,${l}%,0.22)`,
   };
-  return colorCache[name];
+
+  // OPTIMASI: rangkaian data-attribute dirakit SEKALI per provider.
+  // Sebelumnya render() memanggil encodeURIComponent 5x untuk tiap baris
+  // (5 x 50 baris = 250 panggilan) padahal hasilnya selalu sama per provider.
+  c.attrs =
+    `data-text="${encodeURIComponent(c.text)}" ` +
+    `data-texthov="${encodeURIComponent(c.textHov)}" ` +
+    `data-dot="${encodeURIComponent(c.dot)}" ` +
+    `data-dotglow="${encodeURIComponent(c.dotGlow)}" ` +
+    `data-border="${encodeURIComponent(c.border)}"`;
+
+  colorCache[name] = c;
+  return c;
 }
 
 /* ===========================================================
@@ -409,17 +421,43 @@ function saveCache(data) {
 /* ===========================================================
    FILTER OPTIONS
    =========================================================== */
+
+/* Menyimpan sidik jari daftar terakhir, supaya <select> dan <datalist>
+   tidak dibangun ulang kalau isinya sama persis. Setelah tambah/edit/hapus
+   satu game, daftar provider biasanya TIDAK berubah — rebuild-nya mubazir. */
+let _lastProvSig = null;
+let _lastTypeSig = null;
+
 function populateFilters() {
-  const providers = uniqSorted(allGames.map((g) => g.provider));
-  const types     = uniqSorted(allGames.map((g) => g.tipeGame));
+  // OPTIMASI: satu kali loop mengisi dua Set sekaligus.
+  // Sebelumnya: 2x allGames.map() yang masing-masing mengalokasikan
+  // array berisi 10.000 string, lalu dibuang lagi.
+  const provSet = new Set();
+  const typeSet = new Set();
+  for (let i = 0; i < allGames.length; i++) {
+    const g = allGames[i];
+    if (g.provider) provSet.add(g.provider);
+    if (g.tipeGame) typeSet.add(g.tipeGame);
+  }
 
-  // Bersihkan opsi lama (kecuali "Semua ...") lalu isi ulang
-  fillSelect(els.providerFilter, providers, "Semua Provider", state.provider);
-  fillSelect(els.typeFilter,     types,     "Semua Tipe",     state.type);
+  const providers = [...provSet].sort(collator.compare);
+  const types     = [...typeSet].sort(collator.compare);
 
-  // Datalist di form tambah game — supaya user tidak salah ketik
-  els.providerList.innerHTML = providers.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
-  els.tipeGameList.innerHTML = types.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
+  // \u0001 dipakai sebagai pemisah karena mustahil muncul di nama provider
+  const provSig = providers.join("\u0001");
+  const typeSig = types.join("\u0001");
+
+  if (provSig !== _lastProvSig) {
+    fillSelect(els.providerFilter, providers, "Semua Provider", state.provider);
+    els.providerList.innerHTML = providers.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
+    _lastProvSig = provSig;
+  }
+
+  if (typeSig !== _lastTypeSig) {
+    fillSelect(els.typeFilter, types, "Semua Tipe", state.type);
+    els.tipeGameList.innerHTML = types.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
+    _lastTypeSig = typeSig;
+  }
 }
 
 function uniqSorted(arr) {
@@ -436,10 +474,52 @@ function fillSelect(selectEl, values, defaultLabel, currentValue) {
 /* ===========================================================
    APPLY FILTERS
    =========================================================== */
+
+/* -----------------------------------------------------------
+   OPTIMASI: jangan sort ulang tiap ketukan keyboard.
+
+   Sebelumnya applyFilters() menjalankan filtered.sort(collator.compare)
+   SETIAP kali user mengetik atau ganti filter. Pada 10.000 baris itu
+   ~10 ms yang terbuang percuma, karena hasilnya selalu urutan yang sama.
+
+   Kuncinya: Array.prototype.filter MEMPERTAHANKAN urutan. Jadi kalau
+   allGames sudah tersortir, hasil filter otomatis ikut tersortir —
+   tanpa sort sama sekali. Output-nya identik (sudah diverifikasi).
+
+   allGames hanya perlu di-sort ulang kalau isinya benar-benar berubah:
+   - fetchFresh / loadCache  -> allGames di-assign array BARU (referensi beda)
+   - tambah / hapus          -> panjang array berubah
+   - edit                    -> panjang & referensi sama, jadi butuh flag manual
+----------------------------------------------------------- */
+let _sortedRef = null;   // referensi array yang terakhir kali disortir
+let _sortedLen = -1;     // panjangnya saat itu
+let _sortDirty = false;  // dinaikkan manual oleh handleEditSubmit
+
+function ensureSorted() {
+  if (_sortedRef === allGames && _sortedLen === allGames.length && !_sortDirty) return;
+
+  // sort() bersifat stabil (ES2019), jadi urutan baris ber-provider sama tetap terjaga
+  allGames.sort((a, b) => collator.compare(a.provider, b.provider));
+
+  _sortedRef = allGames;
+  _sortedLen = allGames.length;
+  _sortDirty = false;
+}
+
 function applyFilters() {
+  ensureSorted();
+
   const q = state.search.toLowerCase();
   const fProvider = state.provider;
   const fType = state.type;
+
+  // Jalur cepat: tanpa filter apa pun, tidak perlu menelusuri 10.000 baris
+  if (!q && !fProvider && !fType) {
+    filtered = allGames.slice();
+    page = 1;
+    render();
+    return;
+  }
 
   filtered = allGames.filter((g) => {
     if (fProvider && g.provider !== fProvider) return false;
@@ -453,8 +533,7 @@ function applyFilters() {
     return true;
   });
 
-  // Urut A-Z berdasarkan Provider (collator dipakai ulang, jauh lebih cepat)
-  filtered.sort((a, b) => collator.compare(a.provider, b.provider));
+  // Tidak ada .sort() di sini lagi — allGames sudah tersortir oleh ensureSorted()
 
   page = 1;
   render();
@@ -463,6 +542,64 @@ function applyFilters() {
 /* ===========================================================
    RENDER TABEL + PAGINATION
    =========================================================== */
+
+/* -----------------------------------------------------------
+   OPTIMASI: rakit HTML baris SEKALI, simpan di objek game-nya.
+
+   Bagian yang berubah tiap render cuma warna latar zebra (ganjil/genap),
+   yang tergantung posisi baris. Sisanya — escaping 3 field, uid,
+   data-attribute, dan dua ikon SVG — selalu menghasilkan string yang
+   sama untuk game yang sama. Jadi disimpan sebagai _rowRest.
+
+   _rowRest NON-ENUMERABLE, sama seperti _ln/_lp: otomatis diabaikan
+   JSON.stringify, jadi tidak ikut ke localStorage maupun ke server.
+
+   Saat game diedit, objeknya DIGANTI dengan objek baru (bukan dimutasi),
+   sehingga cache-nya ikut segar dengan sendirinya.
+----------------------------------------------------------- */
+const ROW_OPEN = `<div class="row" style="background:`;
+const BG_EVEN  = `hsl(221,43%,18%)`;
+const BG_ODD   = `hsl(221,47%,15%)`;
+
+function rowRest(g) {
+  if (g._rowRest !== undefined) return g._rowRest;
+
+  const pc = providerColor(g.provider);
+  const label = escHtml(g.namaGame);
+
+  const html =
+    `;--row-hover-color:${pc.rowHover}" data-uid="${uidOf(g)}" ${pc.attrs}>` +
+      `<div class="row-accent" style="background:${pc.accent}"></div>` +
+      `<div class="row-cell">` +
+        `<span class="provider-dot" style="background:${pc.dot}"></span>` +
+        `<span class="provider-name" style="color:${pc.text}">${escHtml(g.provider)}</span>` +
+      `</div>` +
+      `<div class="row-cell">` +
+        `<span class="game-name">${label}</span>` +
+      `</div>` +
+      `<div class="row-cell">` +
+        `<span class="type-badge">${escHtml(g.tipeGame || "—")}</span>` +
+      `</div>` +
+      // .row-actions HARUS anak terakhir — lihat catatan `.row-cell:nth-child(4)` di style.css
+      `<div class="row-actions">` +
+        `<button type="button" class="row-btn row-btn-edit" data-act="edit" title="Edit" aria-label="Edit ${label}">` +
+          `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
+            `<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>` +
+          `</svg>` +
+        `</button>` +
+        `<button type="button" class="row-btn row-btn-del" data-act="del" title="Hapus" aria-label="Hapus ${label}">` +
+          `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
+            `<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>` +
+            `<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/>` +
+          `</svg>` +
+        `</button>` +
+      `</div>` +
+    `</div>`;
+
+  Object.defineProperty(g, "_rowRest", { value: html, writable: true, configurable: true });
+  return html;
+}
+
 function render() {
   const total = filtered.length;
 
@@ -478,59 +615,15 @@ function render() {
 
   const totalPages = Math.ceil(total / CONFIG.PAGE_SIZE);
   page = Math.min(page, totalPages);
-  const slice = filtered.slice((page - 1) * CONFIG.PAGE_SIZE, page * CONFIG.PAGE_SIZE);
+
+  const start = (page - 1) * CONFIG.PAGE_SIZE;
+  const end = Math.min(start + CONFIG.PAGE_SIZE, total);
 
   // Bangun seluruh HTML sekaligus dengan join — jauh lebih cepat dari appendChild
-  // berulang. Penting untuk render 50 baris (dan total data 10K+).
-  const parts = new Array(slice.length);
-  for (let i = 0; i < slice.length; i++) {
-    const g = slice[i];
-    const isEven = i % 2 === 0;
-    const pc = providerColor(g.provider);
-
-    // Data warna disimpan di data-attribute supaya event delegation
-    // hover bisa pakainya tanpa re-compute. encodeURIComponent supaya
-    // value yang ada koma/quote tetap aman di HTML attribute.
-    // data-uid dipakai tombol Edit/Hapus untuk menemukan objek aslinya
-    // di allGames tanpa bergantung pada nomor baris atau nama (yang bisa duplikat).
-    const uid = uidOf(g);
-    const label = escHtml(g.namaGame);
-
-    parts[i] =
-      `<div class="row" ` +
-        `style="background:${isEven ? "hsl(221,43%,18%)" : "hsl(221,47%,15%)"};--row-hover-color:${pc.rowHover}" ` +
-        `data-uid="${uid}" ` +
-        `data-text="${encodeURIComponent(pc.text)}" ` +
-        `data-texthov="${encodeURIComponent(pc.textHov)}" ` +
-        `data-dot="${encodeURIComponent(pc.dot)}" ` +
-        `data-dotglow="${encodeURIComponent(pc.dotGlow)}" ` +
-        `data-border="${encodeURIComponent(pc.border)}">` +
-        `<div class="row-accent" style="background:${pc.accent}"></div>` +
-        `<div class="row-cell">` +
-          `<span class="provider-dot" style="background:${pc.dot}"></span>` +
-          `<span class="provider-name" style="color:${pc.text}">${escHtml(g.provider)}</span>` +
-        `</div>` +
-        `<div class="row-cell">` +
-          `<span class="game-name">${escHtml(g.namaGame)}</span>` +
-        `</div>` +
-        `<div class="row-cell">` +
-          `<span class="type-badge">${escHtml(g.tipeGame || "—")}</span>` +
-        `</div>` +
-        // .row-actions HARUS anak terakhir — lihat catatan `.row-cell:nth-child(4)` di style.css
-        `<div class="row-actions">` +
-          `<button type="button" class="row-btn row-btn-edit" data-act="edit" title="Edit" aria-label="Edit ${label}">` +
-            `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
-              `<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>` +
-            `</svg>` +
-          `</button>` +
-          `<button type="button" class="row-btn row-btn-del" data-act="del" title="Hapus" aria-label="Hapus ${label}">` +
-            `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
-              `<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>` +
-              `<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/>` +
-            `</svg>` +
-          `</button>` +
-        `</div>` +
-      `</div>`;
+  // berulang. Baca langsung dari `filtered` tanpa .slice() (hemat satu array).
+  const parts = new Array(end - start);
+  for (let i = start; i < end; i++) {
+    parts[i - start] = ROW_OPEN + ((i - start) % 2 === 0 ? BG_EVEN : BG_ODD) + rowRest(filtered[i]);
   }
   els.tableBody.innerHTML = parts.join("");
 
@@ -592,9 +685,23 @@ function renderSkeleton() {
    HOVER ROW (event delegation)
    1 listener untuk seluruh tabel — bukan 50 listener per baris.
    =========================================================== */
+/* -----------------------------------------------------------
+   OPTIMASI PENTING.
+   `mouseover` MENGGELEMBUNG dari setiap anak: dot, nama, badge, tombol,
+   bahkan tiap <path> di dalam SVG. Menyapu mouse melintasi SATU baris
+   memicu handler ini belasan kali, dan tiap kali ia menjalankan
+   3x decodeURIComponent + 2x querySelector + 4 penulisan inline-style.
+   Itulah sumber utama rasa "lemot" saat menggerakkan kursor di tabel.
+
+   Penjaga `_hoverRow` membuat isi handler hanya dieksekusi saat kursor
+   benar-benar BERPINDAH baris. Hasil visualnya persis sama.
+----------------------------------------------------------- */
+let _hoverRow = null;
+
 function handleRowHoverIn(e) {
   const row = e.target.closest(".row");
-  if (!row) return;
+  if (!row || row === _hoverRow) return;   // <- masih di baris yang sama: tidak ada kerja
+  _hoverRow = row;
 
   const textHov = decodeURIComponent(row.dataset.texthov);
   const dotGlow = decodeURIComponent(row.dataset.dotglow);
@@ -610,6 +717,8 @@ function handleRowHoverIn(e) {
 function handleRowHoverOut(e) {
   const row = e.target.closest(".row");
   if (!row || row.contains(e.relatedTarget)) return;
+
+  if (row === _hoverRow) _hoverRow = null;  // kursor benar-benar meninggalkan baris
 
   const text = decodeURIComponent(row.dataset.text);
   row.style.boxShadow = "none";
@@ -1266,12 +1375,23 @@ async function handleEditSubmit(e) {
     const json = await parseJsonSafe(res);
     if (!json.success) throw new Error(json.message || "Gagal memperbarui data");
 
+    // PENTING: `found.index` dihitung SEBELUM await. Selama menunggu jaringan,
+    // fetchFresh() di latar belakang bisa mengganti seluruh allGames, dan
+    // ensureSorted() bisa mengurutkannya ulang. Memakai index lama berisiko
+    // menimpa game yang SALAH. Maka cari ulang berdasarkan uid.
+    const fresh = findByUid(crudState.editingUid);
+    if (!fresh) throw new Error("Data berubah saat menyimpan. Coba refresh halaman.");
+
     // Optimistic update — ganti objek lama dengan objek baru yang sudah ter-index.
     // Objek diganti (bukan dimutasi) supaya _ln/_lp ikut dihitung ulang;
     // indexGame() melewati objek yang _ln-nya sudah ada, jadi mutasi tidak aman.
     const updated = { ...after };
     indexGame(updated);
-    allGames[found.index] = updated;
+    allGames[fresh.index] = updated;
+
+    // Panjang & referensi allGames tidak berubah, jadi ensureSorted() tidak
+    // akan sadar sendiri. Provider bisa saja berganti -> urutan harus dihitung ulang.
+    _sortDirty = true;
 
     pendingEdits.push({
       from: { provider: before.provider, namaGame: before.namaGame },
@@ -1338,8 +1458,11 @@ async function handleDeleteConfirm() {
     const json = await parseJsonSafe(res);
     if (!json.success) throw new Error(json.message || "Gagal menghapus data");
 
-    // Optimistic delete
-    allGames.splice(found.index, 1);
+    // Sama seperti pada edit: index bisa basi setelah await. Cari ulang.
+    // Kalau barisnya sudah lenyap (mis. sudah tersinkron dari server), tidak apa-apa.
+    const fresh = findByUid(crudState.deletingUid);
+    if (fresh) allGames.splice(fresh.index, 1);
+
     pendingDeletes.push({ ...target, _ts: Date.now() });
 
     // Kalau baris pending-add untuk game yang sama masih antre, batalkan —
