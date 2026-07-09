@@ -926,3 +926,124 @@ html { scrollbar-color: hsl(207, 22%, 40%, 0.55) transparent; scrollbar-width: t
   .pagination { padding: 14px 16px; }
   .page-controls { width: 100%; justify-content: center; }
 }
+/* ===========================================================
+   TAMBAHAN: AKSI BARIS (EDIT & HAPUS)
+   Semua aturan di bawah bersifat additive — tidak ada selector
+   lama yang ditimpa, kecuali satu baris pemulihan border di bawah.
+   =========================================================== */
+
+/* PENTING — pemulihan, bukan perubahan tampilan.
+   Sebelumnya cell "TIPE" adalah :last-child sehingga tidak dapat
+   border kanan dari `.row-cell:not(:last-child)`. Setelah .row-actions
+   ditambahkan sebagai anak terakhir, cell TIPE tidak lagi :last-child
+   dan mendadak dapat border. Baris ini mengembalikannya seperti semula. */
+.row-cell:nth-child(4) { border-right: none; }
+
+.row-actions {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; gap: 6px;
+  z-index: 3;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+/* Muncul saat hover, dan saat tombolnya difokus lewat keyboard (Tab) */
+.row:hover .row-actions,
+.row:focus-within .row-actions { opacity: 1; pointer-events: auto; }
+
+.row-btn {
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  padding: 0;
+  background: hsl(221, 44%, 18%);
+  border: 1px solid hsl(220, 15%, 30%, 0.45);
+  border-radius: 7px;
+  color: hsl(210, 12%, 72%);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+}
+.row-btn:active { transform: scale(0.92); }
+.row-btn:focus-visible { outline: 2px solid var(--metal); outline-offset: 2px; }
+
+.row-btn-edit:hover {
+  border-color: hsl(207, 34%, 55%, 0.6);
+  color: hsl(207, 43%, 82%);
+  background: hsl(207, 25%, 40%, 0.16);
+}
+
+.row-btn-del:hover {
+  border-color: hsl(355, 82%, 67%, 0.6);
+  color: var(--error);
+  background: hsl(355, 60%, 45%, 0.14);
+}
+
+/* ===========================================================
+   TAMBAHAN: TOMBOL DANGER (dipakai modal konfirmasi hapus)
+   Meniru bentuk .btn-submit agar konsisten.
+   =========================================================== */
+.btn-danger {
+  height: 40px; padding: 0 22px;
+  border-radius: var(--radius-sm);
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: 1px solid hsl(355, 82%, 67%, 0.5);
+  background: linear-gradient(135deg, hsl(355, 62%, 42%), hsl(355, 55%, 32%));
+  color: hsl(0, 0%, 100%);
+  transition: filter 0.15s, transform 0.1s, opacity 0.15s;
+}
+.btn-danger:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-danger:active { transform: translateY(1px); }
+.btn-danger:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ===========================================================
+   TAMBAHAN: MODAL KONFIRMASI HAPUS
+   =========================================================== */
+.modal-delete { max-width: 440px; }
+
+.delete-warning {
+  font-size: 13px; line-height: 1.65; color: var(--muted);
+  margin-bottom: 16px;
+}
+.delete-warning strong { color: var(--error); font-weight: 700; }
+
+.delete-preview {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  border: 1px solid hsl(355, 82%, 67%, 0.22);
+  border-left: 3px solid var(--error);
+}
+.delete-preview-provider {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+}
+.delete-preview-name {
+  font-size: 16px; font-weight: 600; color: var(--text);
+  word-break: break-word;
+}
+.delete-preview-type {
+  font-size: 11px; color: hsl(210, 15%, 72%);
+}
+
+/* ===========================================================
+   TAMBAHAN: RESPONSIVE — di layar sempit baris jadi card,
+   tombol aksi ikut turun ke bawah (tidak lagi mengambang).
+   =========================================================== */
+@media (max-width: 640px) {
+  .row-actions {
+    position: static;
+    transform: none;
+    opacity: 1; pointer-events: auto;
+    order: 5;
+    justify-content: flex-start;
+    margin-top: 4px;
+  }
+  .row-cell:nth-child(4) { border-right: none !important; }
+}
+
+/* Hormati preferensi pengguna yang mematikan animasi */
+@media (prefers-reduced-motion: reduce) {
+  .row-actions, .row-btn, .btn-danger { transition: none; }
+}
