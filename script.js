@@ -237,12 +237,62 @@ function loadData() {
   fetchFresh(true);
 }
 
+/* -----------------------------------------------------------
+   FIX #4 — Parsing JSON yang aman.
+   Apps Script kadang membalas HTML (halaman login / halaman error),
+   bukan JSON. `resp.json()` langsung akan melempar pesan mentah
+   "Unexpected token < in JSON..." yang membingungkan user.
+   Di sini body dibaca sebagai teks dulu, baru di-parse. Kalau gagal,
+   kita lempar pesan yang jelas & bisa ditindaklanjuti.
+----------------------------------------------------------- */
+async function parseJsonSafe(resp) {
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch (_) {
+    if (!resp.ok) throw new Error(`Server membalas status ${resp.status}. Coba lagi beberapa saat.`);
+    throw new Error("Server membalas format tidak dikenal (bukan JSON). Periksa deployment Apps Script.");
+  }
+}
+
+/* -----------------------------------------------------------
+   FIX #3 — Race condition optimistic update.
+   Setelah POST sukses, kita panggil fetchFresh(). Tapi Google Sheets
+   kadang belum selesai commit, sehingga respons server MASIH data lama.
+   Akibatnya game yang baru ditambah "berkedip hilang" lalu muncul lagi.
+
+   Solusi: catat game yang baru ditambah ke `pendingAdds`. Setiap kali
+   data server masuk, game pending yang BELUM ada di server disuntikkan
+   kembali. Begitu server sudah memuatnya, entri pending dihapus.
+----------------------------------------------------------- */
+const pendingAdds = [];
+
+function gameKey(g) {
+  return `${(g.provider || "").trim().toLowerCase()}|${(g.namaGame || "").trim().toLowerCase()}`;
+}
+
+function mergePending(serverGames) {
+  if (pendingAdds.length === 0) return serverGames;
+
+  const serverKeys = new Set(serverGames.map(gameKey));
+
+  // Sisakan hanya pending yang belum terlihat di server
+  for (let i = pendingAdds.length - 1; i >= 0; i--) {
+    if (serverKeys.has(gameKey(pendingAdds[i]))) {
+      pendingAdds.splice(i, 1);       // sudah commit → tidak perlu disuntik lagi
+    } else {
+      serverGames.push({ ...pendingAdds[i] }); // masih telat → tahan di UI
+    }
+  }
+  return serverGames;
+}
+
 async function fetchFresh(showErrorOnFail) {
   try {
     const resp = await fetch(`${CONFIG.API_URL}?action=getGames`);
-    const json = await resp.json();
+    const json = await parseJsonSafe(resp);
     if (!json.success) throw new Error(json.message || "Gagal memuat data");
-    allGames = json.data || [];
+    allGames = mergePending(json.data || []);
     indexGames(allGames);
     saveCache(allGames);
     populateFilters();
@@ -519,7 +569,7 @@ function handleAddGame(e) {
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ provider, namaGame, tipeGame }),
   })
-    .then((res) => res.json())
+    .then((res) => parseJsonSafe(res))
     .then((json) => {
       if (!json.success) throw new Error(json.message || "Gagal menyimpan data");
 
@@ -527,6 +577,8 @@ function handleAddGame(e) {
       const newGame = { provider, namaGame, tipeGame };
       indexGame(newGame);
       allGames.push(newGame);
+      // Tahan di UI sampai server benar-benar mengembalikannya (lihat mergePending)
+      pendingAdds.push({ provider, namaGame, tipeGame });
       saveCache(allGames);
       populateFilters();
       applyFilters();
@@ -587,8 +639,20 @@ function downloadCSV() {
   const a = document.createElement("a");
   a.href = url;
   a.download = `data-game-${suffix}-${date}.csv`;
+
+  // FIX #5:
+  // 1) Beberapa browser (Firefox lama) mengabaikan .click() pada anchor
+  //    yang tidak terpasang di DOM → anchor di-append dulu.
+  // 2) revokeObjectURL() yang dipanggil sinkron tepat setelah .click()
+  //    bisa membatalkan download yang belum sempat mulai (Firefox/Safari).
+  //    Ditunda supaya browser sempat membaca blob-nya.
+  a.style.display = "none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+    a.remove();
+  }, 1000);
 
   showToast(`✓ ${filtered.length} game ter-export ke CSV.`, "success");
 }
@@ -854,7 +918,11 @@ async function handleBatchAdd() {
   els.btnBatchAdd.disabled = true;
   els.btnBatchAdd.textContent = `Menyimpan ${selectedNames.length} game...`;
 
-  let successCount = 0;
+  // FIX #1: catat nama yang BENAR-BENAR sukses, bukan menebak dari hitungan.
+  // Kode lama memakai filter `i < successCount + failCount - failCount`
+  // (= `i < successCount`) yang berasumsi semua kegagalan berada di urutan
+  // paling belakang. Kalau game ke-1 gagal dan ke-2 sukses, asumsi itu meleset.
+  const succeeded = [];
   let failCount = 0;
 
   // Kirim satu per satu secara berurutan (agar tidak flood server)
@@ -865,47 +933,46 @@ async function handleBatchAdd() {
         headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ provider, namaGame, tipeGame }),
       });
-      const json = await res.json();
+      const json = await parseJsonSafe(res);
       if (!json.success) throw new Error(json.message);
       // Optimistic: langsung tambah ke allGames
       const addedGame = { provider, namaGame, tipeGame };
       indexGame(addedGame);
       allGames.push(addedGame);
-      successCount++;
+      pendingAdds.push({ provider, namaGame, tipeGame }); // FIX #3
+      succeeded.push(namaGame);
     } catch (_) {
       failCount++;
     }
   }
+
+  const successCount = succeeded.length;
 
   // Update cache & filter
   saveCache(allGames);
   populateFilters();
   applyFilters();
 
-  // Hapus game yang berhasil dari daftar missing
-  const addedNames = new Set(
-    [...ccState.selectedItems]
-      .filter((_, i) => i < successCount + failCount - failCount) // hanya yg sukses
-      .map((idx) => ccState.missingGames[idx].toLowerCase())
-  );
+  // FIX #2: pindahkan yang sukses dari daftar "missing" ke daftar "found"
+  // secara PERMANEN di ccState. Kode lama hanya menambal angka statistik
+  // dengan `foundGames.length + successCount`, sehingga saat batch add
+  // dijalankan kedua kalinya successCount ter-reset dan angka "Sudah Ada"
+  // ikut turun. Sekarang ccState jadi sumber kebenaran tunggal.
+  const succeededSet = new Set(succeeded.map((n) => n.toLowerCase()));
 
-  // Cara lebih aman: rebuild missingGames dari yang belum terdata di allGames (setelah update)
-  const existingNow = new Set(allGames.map((g) => g.namaGame.toLowerCase().trim()));
   ccState.missingGames = ccState.missingGames.filter(
-    (name) => !existingNow.has(name.toLowerCase())
+    (name) => !succeededSet.has(name.toLowerCase())
   );
+  for (const namaGame of succeeded) {
+    ccState.foundGames.push({ name: namaGame, provider, tipeGame });
+  }
+
   ccState.selectedItems.clear();
   ccState.allSelected = false;
 
-  // Re-render hasil
-  const newTotal = ccState.missingGames.length + ccState.foundGames.length + successCount;
-  renderCrosscheckResult(newTotal);
-
-  // Update statistik live
-  els.statMissing.textContent = ccState.missingGames.length.toLocaleString("id");
-  els.statFound.textContent   = (ccState.foundGames.length + successCount).toLocaleString("id");
-  els.badgeMissing.textContent = ccState.missingGames.length;
-  els.badgeFound.textContent   = ccState.foundGames.length + successCount;
+  // Total input tetap konsisten: yang pindah kategori tidak menambah/mengurangi total
+  const newTotal = ccState.missingGames.length + ccState.foundGames.length;
+  renderCrosscheckResult(newTotal); // sudah menulis semua statistik & badge dari ccState
 
   els.btnBatchAdd.disabled = false;
   els.btnBatchAdd.innerHTML = `
