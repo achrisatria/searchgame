@@ -289,6 +289,71 @@
   </div>
 </div>
 
+<!-- ===================== MODAL EDIT GAME ===================== -->
+<div class="modal-overlay hidden" id="modalEditOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+    <div class="modal-header">
+      <h2 id="editTitle">Edit Game</h2>
+      <button class="btn-close-modal" id="btnCloseEdit" aria-label="Tutup">✕</button>
+    </div>
+
+    <form id="formEditGame" novalidate>
+      <div class="modal-body">
+
+        <div class="form-group">
+          <label for="editProvider">Provider</label>
+          <input type="text" id="editProvider" list="providerList" placeholder="Contoh: Pragmatic Play" />
+          <span class="field-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="editNamaGame">Nama Game</label>
+          <input type="text" id="editNamaGame" placeholder="Contoh: Sweet Bonanza" />
+          <span class="field-error"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="editTipeGame">Tipe Game</label>
+          <input type="text" id="editTipeGame" list="tipeGameList" placeholder="Contoh: Slot" />
+          <span class="field-error"></span>
+        </div>
+
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="btnCancelEdit">Batal</button>
+        <button type="submit" class="btn-submit" id="btnSubmitEdit">Perbarui</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ===================== MODAL KONFIRMASI HAPUS ===================== -->
+<div class="modal-overlay hidden" id="modalDeleteOverlay">
+  <div class="modal modal-delete" role="alertdialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="modal-header">
+      <h2 id="deleteTitle">Hapus Game</h2>
+      <button class="btn-close-modal" id="btnCloseDelete" aria-label="Tutup">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="delete-warning">
+        Game berikut akan dihapus permanen dari dashboard. Tindakan ini <strong>tidak bisa dibatalkan</strong>.
+      </p>
+      <div class="delete-preview">
+        <span class="delete-preview-provider" id="deletePreviewProvider">—</span>
+        <span class="delete-preview-name" id="deletePreviewName">—</span>
+        <span class="delete-preview-type" id="deletePreviewType">—</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" id="btnCancelDelete">Batal</button>
+      <button type="button" class="btn-danger" id="btnConfirmDelete">Ya, Hapus</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== TOAST ===================== -->
 <div class="toast-container" id="toastContainer"></div>
 
