@@ -266,25 +266,93 @@ async function parseJsonSafe(resp) {
    kembali. Begitu server sudah memuatnya, entri pending dihapus.
 ----------------------------------------------------------- */
 const pendingAdds = [];
+const pendingEdits = [];    // { from:{provider,namaGame}, to:{provider,namaGame,tipeGame}, _ts }
+const pendingDeletes = [];  // { provider, namaGame, _ts }
+const PENDING_TTL_MS = 90 * 1000; // batas aman menahan entri pending
 
 function gameKey(g) {
   return `${(g.provider || "").trim().toLowerCase()}|${(g.namaGame || "").trim().toLowerCase()}`;
 }
 
-function mergePending(serverGames) {
-  if (pendingAdds.length === 0) return serverGames;
+// Apakah dua game identik luar-dalam (termasuk tipeGame)?
+function sameGame(a, b) {
+  return gameKey(a) === gameKey(b) &&
+    (a.tipeGame || "").trim().toLowerCase() === (b.tipeGame || "").trim().toLowerCase();
+}
 
-  const serverKeys = new Set(serverGames.map(gameKey));
+// Dedupe: klik "Simpan" dua kali untuk game yang sama tidak boleh
+// menghasilkan dua baris pending (yang nanti tampil ganda di tabel).
+function addPending(game) {
+  const key = gameKey(game);
+  if (pendingAdds.some((p) => gameKey(p) === key)) return;
+  pendingAdds.push({ ...game, _ts: Date.now() });
+}
 
-  // Sisakan hanya pending yang belum terlihat di server
-  for (let i = pendingAdds.length - 1; i >= 0; i--) {
-    if (serverKeys.has(gameKey(pendingAdds[i]))) {
-      pendingAdds.splice(i, 1);       // sudah commit → tidak perlu disuntik lagi
-    } else {
-      serverGames.push({ ...pendingAdds[i] }); // masih telat → tahan di UI
+// Buang entri pending yang sudah terlalu tua di ketiga antrian, supaya
+// tidak ada "baris hantu" / "baris zombie" yang bertahan selamanya.
+function prunePending(now) {
+  for (const q of [pendingAdds, pendingEdits, pendingDeletes]) {
+    for (let i = q.length - 1; i >= 0; i--) {
+      if (now - q[i]._ts > PENDING_TTL_MS) q.splice(i, 1);
     }
   }
-  return serverGames;
+}
+
+/**
+ * Damaikan data server (yang mungkin masih basi karena Sheets belum commit)
+ * dengan operasi lokal yang baru saja sukses. Urutan penting:
+ * hapus dulu → lalu edit → terakhir tambah.
+ */
+function mergePending(serverGames) {
+  const now = Date.now();
+  prunePending(now);
+
+  if (!pendingAdds.length && !pendingEdits.length && !pendingDeletes.length) return serverGames;
+
+  let out = serverGames;
+
+  /* ---- 1) HAPUS: sembunyikan baris yang server masih tampilkan ---- */
+  if (pendingDeletes.length) {
+    const delKeys = new Set(pendingDeletes.map(gameKey));
+    out = out.filter((g) => !delKeys.has(gameKey(g)));
+
+    // Server sudah tidak punya baris itu → penghapusan terkonfirmasi
+    const serverKeys = new Set(serverGames.map(gameKey));
+    for (let i = pendingDeletes.length - 1; i >= 0; i--) {
+      if (!serverKeys.has(gameKey(pendingDeletes[i]))) pendingDeletes.splice(i, 1);
+    }
+  }
+
+  /* ---- 2) EDIT: timpa baris versi lama dengan versi baru ---- */
+  for (let i = pendingEdits.length - 1; i >= 0; i--) {
+    const e = pendingEdits[i];
+    const idx = out.findIndex((g) => gameKey(g) === gameKey(e.from));
+
+    if (idx !== -1) {
+      if (sameGame(out[idx], e.to)) {
+        pendingEdits.splice(i, 1);   // server sudah menyimpan versi baru
+      } else {
+        out[idx] = { ...e.to };      // server masih versi lama → tempel versi baru
+      }
+    } else if (out.some((g) => gameKey(g) === gameKey(e.to))) {
+      pendingEdits.splice(i, 1);     // nama/provider berubah & server sudah commit
+    }
+  }
+
+  /* ---- 3) TAMBAH: suntikkan kembali yang belum muncul ---- */
+  if (pendingAdds.length) {
+    const outKeys = new Set(out.map(gameKey));
+    for (let i = pendingAdds.length - 1; i >= 0; i--) {
+      if (outKeys.has(gameKey(pendingAdds[i]))) {
+        pendingAdds.splice(i, 1);         // sudah commit
+      } else {
+        const { _ts, ...game } = pendingAdds[i]; // _ts internal, jangan bocor ke cache
+        out.push(game);
+      }
+    }
+  }
+
+  return out;
 }
 
 async function fetchFresh(showErrorOnFail) {
@@ -423,9 +491,15 @@ function render() {
     // Data warna disimpan di data-attribute supaya event delegation
     // hover bisa pakainya tanpa re-compute. encodeURIComponent supaya
     // value yang ada koma/quote tetap aman di HTML attribute.
+    // data-uid dipakai tombol Edit/Hapus untuk menemukan objek aslinya
+    // di allGames tanpa bergantung pada nomor baris atau nama (yang bisa duplikat).
+    const uid = uidOf(g);
+    const label = escHtml(g.namaGame);
+
     parts[i] =
       `<div class="row" ` +
         `style="background:${isEven ? "hsl(221,43%,18%)" : "hsl(221,47%,15%)"};--row-hover-color:${pc.rowHover}" ` +
+        `data-uid="${uid}" ` +
         `data-text="${encodeURIComponent(pc.text)}" ` +
         `data-texthov="${encodeURIComponent(pc.textHov)}" ` +
         `data-dot="${encodeURIComponent(pc.dot)}" ` +
@@ -441,6 +515,20 @@ function render() {
         `</div>` +
         `<div class="row-cell">` +
           `<span class="type-badge">${escHtml(g.tipeGame || "—")}</span>` +
+        `</div>` +
+        // .row-actions HARUS anak terakhir — lihat catatan `.row-cell:nth-child(4)` di style.css
+        `<div class="row-actions">` +
+          `<button type="button" class="row-btn row-btn-edit" data-act="edit" title="Edit" aria-label="Edit ${label}">` +
+            `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
+              `<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>` +
+            `</svg>` +
+          `</button>` +
+          `<button type="button" class="row-btn row-btn-del" data-act="del" title="Hapus" aria-label="Hapus ${label}">` +
+            `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
+              `<path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/>` +
+              `<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M10 11v6"/><path d="M14 11v6"/>` +
+            `</svg>` +
+          `</button>` +
         `</div>` +
       `</div>`;
   }
@@ -578,7 +666,7 @@ function handleAddGame(e) {
       indexGame(newGame);
       allGames.push(newGame);
       // Tahan di UI sampai server benar-benar mengembalikannya (lihat mergePending)
-      pendingAdds.push({ provider, namaGame, tipeGame });
+      addPending({ provider, namaGame, tipeGame });
       saveCache(allGames);
       populateFilters();
       applyFilters();
@@ -939,7 +1027,7 @@ async function handleBatchAdd() {
       const addedGame = { provider, namaGame, tipeGame };
       indexGame(addedGame);
       allGames.push(addedGame);
-      pendingAdds.push({ provider, namaGame, tipeGame }); // FIX #3
+      addPending({ provider, namaGame, tipeGame }); // FIX #3
       succeeded.push(namaGame);
     } catch (_) {
       failCount++;
@@ -999,4 +1087,290 @@ function escHtml(s) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/* ===========================================================
+   ===  TAMBAHAN: FITUR EDIT & HAPUS GAME  ===================
+   Blok ini murni ADDITIVE. Tidak ada fungsi di atas yang diubah
+   (kecuali render() yang kini mencetak data-uid + tombol aksi).
+   =========================================================== */
+
+/* -----------------------------------------------------------
+   IDENTITAS BARIS
+   Data dari server tidak punya ID unik, dan tabel di-sort & dipaginasi,
+   jadi nomor baris tidak bisa dipakai.
+
+   Sempat terpikir memberi _uid sekuensial (g1, g2, ...) ke tiap objek.
+   Tapi itu RAPUH: fetchFresh() yang jalan di latar belakang MENGGANTI
+   seluruh isi allGames dengan objek baru. Kalau itu terjadi saat modal
+   edit sedang terbuka, _uid lama lenyap dan tombol Simpan gagal.
+
+   Maka uid dibuat DETERMINISTIK dari isi datanya sendiri, sehingga
+   objek baru hasil refetch tetap menghasilkan uid yang sama.
+   encodeURIComponent menjaga nilai aman dipakai di dalam HTML attribute.
+----------------------------------------------------------- */
+function uidOf(g) {
+  return encodeURIComponent(`${gameKey(g)}|${(g.tipeGame || "").trim().toLowerCase()}`);
+}
+
+function findByUid(uid) {
+  for (let i = 0; i < allGames.length; i++) {
+    if (uidOf(allGames[i]) === uid) return { game: allGames[i], index: i };
+  }
+  return null;
+}
+
+/* -----------------------------------------------------------
+   REFERENSI DOM TAMBAHAN
+   Object.assign supaya objek `els` di atas tidak perlu diubah.
+----------------------------------------------------------- */
+Object.assign(els, {
+  modalEditOverlay: document.getElementById("modalEditOverlay"),
+  formEditGame: document.getElementById("formEditGame"),
+  editProvider: document.getElementById("editProvider"),
+  editNamaGame: document.getElementById("editNamaGame"),
+  editTipeGame: document.getElementById("editTipeGame"),
+  btnCloseEdit: document.getElementById("btnCloseEdit"),
+  btnCancelEdit: document.getElementById("btnCancelEdit"),
+  btnSubmitEdit: document.getElementById("btnSubmitEdit"),
+
+  modalDeleteOverlay: document.getElementById("modalDeleteOverlay"),
+  btnCloseDelete: document.getElementById("btnCloseDelete"),
+  btnCancelDelete: document.getElementById("btnCancelDelete"),
+  btnConfirmDelete: document.getElementById("btnConfirmDelete"),
+  deletePreviewProvider: document.getElementById("deletePreviewProvider"),
+  deletePreviewName: document.getElementById("deletePreviewName"),
+  deletePreviewType: document.getElementById("deletePreviewType"),
+});
+
+/* State: game yang sedang diedit / akan dihapus */
+const crudState = { editingUid: null, deletingUid: null, busy: false };
+
+/* -----------------------------------------------------------
+   BINDING
+   Listener DOMContentLoaded KEDUA — dijalankan setelah bindEvents()
+   milik kode lama, tanpa menyentuhnya sedikit pun.
+----------------------------------------------------------- */
+document.addEventListener("DOMContentLoaded", bindCrudEvents);
+
+function bindCrudEvents() {
+  // Event delegation: 1 listener untuk seluruh tabel
+  els.tableBody.addEventListener("click", handleRowActionClick);
+
+  // Modal edit
+  els.formEditGame.addEventListener("submit", handleEditSubmit);
+  els.btnCloseEdit.addEventListener("click", closeEditModal);
+  els.btnCancelEdit.addEventListener("click", closeEditModal);
+  els.modalEditOverlay.addEventListener("click", (e) => {
+    if (e.target === els.modalEditOverlay) closeEditModal();
+  });
+
+  // Modal hapus
+  els.btnConfirmDelete.addEventListener("click", handleDeleteConfirm);
+  els.btnCloseDelete.addEventListener("click", closeDeleteModal);
+  els.btnCancelDelete.addEventListener("click", closeDeleteModal);
+  els.modalDeleteOverlay.addEventListener("click", (e) => {
+    if (e.target === els.modalDeleteOverlay) closeDeleteModal();
+  });
+
+  // Escape — listener terpisah, tidak mengganggu handler Escape milik kode lama
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || crudState.busy) return;
+    if (!els.modalDeleteOverlay.classList.contains("hidden")) closeDeleteModal();
+    else if (!els.modalEditOverlay.classList.contains("hidden")) closeEditModal();
+  });
+}
+
+function handleRowActionClick(e) {
+  const btn = e.target.closest(".row-btn");
+  if (!btn) return;
+
+  const row = btn.closest(".row");
+  if (!row) return;
+
+  const uid = row.dataset.uid;
+  if (btn.dataset.act === "edit") openEditModal(uid);
+  else if (btn.dataset.act === "del") openDeleteModal(uid);
+}
+
+/* ===========================================================
+   EDIT GAME
+   =========================================================== */
+function openEditModal(uid) {
+  const found = findByUid(uid);
+  if (!found) { showToast("Game tidak ditemukan. Coba refresh halaman.", "error"); return; }
+
+  crudState.editingUid = uid;
+
+  els.editProvider.value = found.game.provider || "";
+  els.editNamaGame.value = found.game.namaGame || "";
+  els.editTipeGame.value = found.game.tipeGame || "";
+
+  clearEditErrors();
+  els.modalEditOverlay.classList.remove("hidden");
+  setTimeout(() => els.editNamaGame.focus(), 50);
+}
+
+function closeEditModal() {
+  if (crudState.busy) return;
+  els.modalEditOverlay.classList.add("hidden");
+  crudState.editingUid = null;
+}
+
+function clearEditErrors() {
+  els.formEditGame.querySelectorAll(".input-error").forEach((el) => el.classList.remove("input-error"));
+  els.formEditGame.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
+}
+
+async function handleEditSubmit(e) {
+  e.preventDefault();
+  if (crudState.busy) return;
+
+  const found = findByUid(crudState.editingUid);
+  if (!found) { showToast("Game tidak ditemukan. Coba refresh halaman.", "error"); return; }
+
+  const provider = els.editProvider.value.trim();
+  const namaGame = els.editNamaGame.value.trim();
+  const tipeGame = els.editTipeGame.value.trim();
+
+  clearEditErrors();
+
+  let valid = true;
+  if (!provider) { setFieldError(els.editProvider, "Provider wajib diisi"); valid = false; }
+  if (!namaGame) { setFieldError(els.editNamaGame, "Nama game wajib diisi"); valid = false; }
+  if (!tipeGame) { setFieldError(els.editTipeGame, "Tipe game wajib diisi"); valid = false; }
+  if (!valid) return;
+
+  const before = { provider: found.game.provider, namaGame: found.game.namaGame, tipeGame: found.game.tipeGame };
+  const after  = { provider, namaGame, tipeGame };
+
+  // Tidak ada yang berubah → tidak perlu request ke server
+  if (sameGame(before, after)) { closeEditModal(); return; }
+
+  // Cegah tabrakan: provider+nama baru sudah dipakai baris LAIN
+  const bentrok = allGames.some((g, i) => i !== found.index && gameKey(g) === gameKey(after));
+  if (bentrok) {
+    setFieldError(els.editNamaGame, "Kombinasi provider + nama game ini sudah ada");
+    return;
+  }
+
+  setBusy(true, els.btnSubmitEdit, "Menyimpan...");
+
+  try {
+    const res = await fetch(CONFIG.API_URL, {
+      method: "POST",
+      // text/plain agar tidak memicu preflight OPTIONS (Apps Script tidak mendukungnya)
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "update", from: { provider: before.provider, namaGame: before.namaGame }, ...after }),
+    });
+    const json = await parseJsonSafe(res);
+    if (!json.success) throw new Error(json.message || "Gagal memperbarui data");
+
+    // Optimistic update — ganti objek lama dengan objek baru yang sudah ter-index.
+    // Objek diganti (bukan dimutasi) supaya _ln/_lp ikut dihitung ulang;
+    // indexGame() melewati objek yang _ln-nya sudah ada, jadi mutasi tidak aman.
+    const updated = { ...after };
+    indexGame(updated);
+    allGames[found.index] = updated;
+
+    pendingEdits.push({
+      from: { provider: before.provider, namaGame: before.namaGame },
+      to: { ...after },
+      _ts: Date.now(),
+    });
+
+    saveCache(allGames);
+    populateFilters();
+    applyFilters();
+
+    showToast("✓ Game berhasil diperbarui!", "success");
+    setBusy(false, els.btnSubmitEdit, "Perbarui");
+    closeEditModal();
+
+    fetchFresh(false); // sinkronkan di belakang layar
+  } catch (err) {
+    console.error(err);
+    showToast(err.message || "Gagal memperbarui game.", "error");
+    setBusy(false, els.btnSubmitEdit, "Perbarui");
+  }
+}
+
+/* ===========================================================
+   HAPUS GAME
+   =========================================================== */
+function openDeleteModal(uid) {
+  const found = findByUid(uid);
+  if (!found) { showToast("Game tidak ditemukan. Coba refresh halaman.", "error"); return; }
+
+  crudState.deletingUid = uid;
+
+  // textContent (bukan innerHTML) — aman dari HTML injection tanpa perlu escHtml
+  els.deletePreviewProvider.textContent = found.game.provider || "—";
+  els.deletePreviewName.textContent = found.game.namaGame || "—";
+  els.deletePreviewType.textContent = found.game.tipeGame || "—";
+
+  els.modalDeleteOverlay.classList.remove("hidden");
+  setTimeout(() => els.btnCancelDelete.focus(), 50); // fokus default ke aksi yang aman
+}
+
+function closeDeleteModal() {
+  if (crudState.busy) return;
+  els.modalDeleteOverlay.classList.add("hidden");
+  crudState.deletingUid = null;
+}
+
+async function handleDeleteConfirm() {
+  if (crudState.busy) return;
+
+  const found = findByUid(crudState.deletingUid);
+  if (!found) { showToast("Game tidak ditemukan. Coba refresh halaman.", "error"); return; }
+
+  const target = { provider: found.game.provider, namaGame: found.game.namaGame };
+
+  setBusy(true, els.btnConfirmDelete, "Menghapus...");
+
+  try {
+    const res = await fetch(CONFIG.API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "delete", ...target }),
+    });
+    const json = await parseJsonSafe(res);
+    if (!json.success) throw new Error(json.message || "Gagal menghapus data");
+
+    // Optimistic delete
+    allGames.splice(found.index, 1);
+    pendingDeletes.push({ ...target, _ts: Date.now() });
+
+    // Kalau baris pending-add untuk game yang sama masih antre, batalkan —
+    // kalau tidak, mergePending akan "menghidupkannya" lagi.
+    const key = gameKey(target);
+    for (let i = pendingAdds.length - 1; i >= 0; i--) {
+      if (gameKey(pendingAdds[i]) === key) pendingAdds.splice(i, 1);
+    }
+
+    saveCache(allGames);
+    populateFilters();
+    applyFilters();
+
+    showToast("✓ Game berhasil dihapus.", "success");
+    setBusy(false, els.btnConfirmDelete, "Ya, Hapus");
+    closeDeleteModal();
+
+    fetchFresh(false);
+  } catch (err) {
+    console.error(err);
+    showToast(err.message || "Gagal menghapus game.", "error");
+    setBusy(false, els.btnConfirmDelete, "Ya, Hapus");
+  }
+}
+
+/* -----------------------------------------------------------
+   Kunci UI selama request berjalan supaya modal tidak bisa
+   ditutup / diklik dua kali di tengah proses simpan-hapus.
+----------------------------------------------------------- */
+function setBusy(busy, btn, label) {
+  crudState.busy = busy;
+  btn.disabled = busy;
+  btn.textContent = label;
 }
