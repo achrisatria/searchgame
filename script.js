@@ -9,7 +9,7 @@
    kamu yang sudah di-deploy.
 ----------------------------------------------------------- */
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbx1R63UHZM-qGioSGjp3kYamn1F6ksOJnH1DWtW_PDyGO0k1Si6Dl3JSIncK1BEZMJf/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbz8YcpUhCo3pNsJng-Fe7zBmif9jh1D4nHmDXFd00ipbOuiaBWsAqmceI5MbMwPxhK8/exec",
   PAGE_SIZE: 50,
   CACHE_KEY: "dpp_games_cache_v2",
   CACHE_TTL_MS: 30 * 60 * 1000, // cache "segar" selama 30 menit
