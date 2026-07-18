@@ -1047,3 +1047,137 @@ html { scrollbar-color: hsl(207, 22%, 40%, 0.55) transparent; scrollbar-width: t
 @media (prefers-reduced-motion: reduce) {
   .row-actions, .row-btn, .btn-danger { transition: none; }
 }
+
+/* ===========================================================
+   TAMBAHAN: MODE PILIH & HAPUS MASSAL
+   Semua aturan di bawah additive. Checkbox diletakkan DI DALAM
+   .row-actions yang sudah ada, sehingga jumlah anak .row tetap 5
+   dan `.row-cell:nth-child(4)` di atas tidak bergeser.
+   =========================================================== */
+
+/* Tombol toggle di toolbar — meniru bentuk .btn-csv */
+.btn-select-mode {
+  height: 42px; padding: 0 16px;
+  display: flex; align-items: center; gap: 8px;
+  background: hsl(221, 44%, 18%);
+  border: 1px solid hsl(220, 15%, 30%, 0.4);
+  border-radius: var(--radius-sm);
+  color: hsl(210, 12%, 80%);
+  font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.btn-select-mode svg { width: 16px; height: 16px; }
+.btn-select-mode:hover {
+  border-color: hsl(207, 34%, 55%, 0.45);
+  color: hsl(207, 43%, 80%);
+}
+.btn-select-mode[aria-pressed="true"] {
+  border-color: hsl(207, 34%, 60%, 0.65);
+  color: hsl(207, 45%, 86%);
+  background: hsl(207, 25%, 40%, 0.18);
+  box-shadow: inset 0 0 0 1px hsl(207, 34%, 60%, 0.15);
+}
+
+/* Checkbox per baris — hanya muncul saat mode pilih aktif */
+.row-check {
+  width: 16px; height: 16px;
+  margin: 0 4px 0 0;
+  accent-color: hsl(214, 96%, 64%);
+  cursor: pointer;
+  display: none;
+  flex-shrink: 0;
+}
+.select-mode .row-check { display: inline-block; }
+
+/* Saat mode pilih: aksi baris selalu terlihat, tombol edit/hapus disembunyikan
+   supaya tidak ada klik hapus tunggal yang tidak disengaja. */
+.select-mode .row-actions { opacity: 1; pointer-events: auto; }
+.select-mode .row-btn { display: none; }
+
+/* Baris yang terpilih diberi penanda kiri + latar tipis.
+
+   PENTING: JANGAN pakai box-shadow di sini. handleRowHoverOut() menulis
+   `row.style.boxShadow = "none"` sebagai INLINE style, yang mengalahkan
+   aturan class — penanda seleksi akan lenyap begitu kursor melewatinya.
+   .row-accent tidak pernah disentuh handler hover, jadi aman.
+
+   !important diperlukan karena .row-accent membawa inline
+   style="background:<warna provider>" dari render(). */
+.row.is-selected .row-accent {
+  display: block;
+  width: 3px;
+  background: hsl(214, 96%, 64%) !important;
+}
+
+/* .row membawa inline style="background:<zebra>", dan .row:hover memakai
+   !important. Aturan ini muncul SETELAHNYA di file dengan specificity sama,
+   jadi ia menang di kedua keadaan. */
+.row.is-selected { background: hsl(214, 96%, 64%, 0.10) !important; }
+
+/* Bilah aksi massal */
+.bulk-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, hsl(207, 25%, 26%, 0.35), hsl(221, 44%, 17%));
+  border-bottom: 1px solid hsl(207, 34%, 60%, 0.22);
+}
+.bulk-count { font-size: 13px; color: var(--muted); }
+.bulk-count strong {
+  color: hsl(207, 45%, 86%); font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bulk-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.btn-bulk-link {
+  height: 32px; padding: 0 12px;
+  background: transparent;
+  border: 1px solid hsl(220, 15%, 35%, 0.45);
+  border-radius: 8px;
+  color: hsl(210, 12%, 78%);
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-bulk-link:hover:not(:disabled) {
+  border-color: hsl(207, 34%, 55%, 0.55);
+  color: hsl(207, 43%, 82%);
+}
+.btn-bulk-link:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-bulk-delete { height: 32px; padding: 0 16px; font-size: 12px; }
+
+/* Daftar pratinjau di modal konfirmasi massal */
+.bulk-preview {
+  list-style: none; margin: 0 0 10px; padding: 12px 14px;
+  max-height: 190px; overflow-y: auto;
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  border: 1px solid hsl(355, 82%, 67%, 0.22);
+  border-left: 3px solid var(--error);
+}
+.bulk-preview li {
+  font-size: 13px; color: var(--text);
+  padding: 3px 0; word-break: break-word;
+}
+.bulk-preview li span { color: var(--muted); font-size: 11px; }
+
+.bulk-more { font-size: 12px; color: var(--muted); margin: 0 0 10px; font-style: italic; }
+
+.bulk-progress {
+  font-size: 12px; color: hsl(207, 43%, 80%); margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .bulk-bar { padding: 12px 16px; }
+  .bulk-actions { width: 100%; }
+  .btn-bulk-delete { margin-left: auto; }
+  .select-mode .row-actions { order: 5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-select-mode, .btn-bulk-link { transition: none; }
+}
