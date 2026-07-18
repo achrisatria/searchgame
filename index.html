@@ -103,11 +103,33 @@
       </svg>
       <span id="csvLabel">CSV</span>
     </button>
+
+    <button class="btn-select-mode" id="btnSelectMode" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 11 12 14 22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+      <span id="selectModeLabel">Pilih</span>
+    </button>
   </div>
 
   <!-- Table -->
   <div class="table-card">
     <div class="table-top-rim"></div>
+
+    <!-- Bilah aksi massal — hanya tampil saat mode pilih aktif -->
+    <div class="bulk-bar hidden" id="bulkBar" role="region" aria-label="Aksi massal">
+      <div class="bulk-count">
+        <strong id="bulkCount">0</strong> game dipilih
+      </div>
+
+      <div class="bulk-actions">
+        <button type="button" class="btn-bulk-link" id="btnSelectPage">Pilih halaman ini</button>
+        <button type="button" class="btn-bulk-link" id="btnSelectFiltered">Pilih semua hasil filter</button>
+        <button type="button" class="btn-bulk-link" id="btnClearSelection">Bersihkan</button>
+        <button type="button" class="btn-danger btn-bulk-delete" id="btnBulkDelete" disabled>Hapus Terpilih</button>
+      </div>
+    </div>
 
     <div class="col-header">
       <div class="col-header-cell">
@@ -350,6 +372,31 @@
     <div class="modal-footer">
       <button type="button" class="btn-cancel" id="btnCancelDelete">Batal</button>
       <button type="button" class="btn-danger" id="btnConfirmDelete">Ya, Hapus</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL KONFIRMASI HAPUS MASSAL ===================== -->
+<div class="modal-overlay hidden" id="modalBulkDeleteOverlay">
+  <div class="modal modal-delete" role="alertdialog" aria-modal="true" aria-labelledby="bulkDeleteTitle">
+    <div class="modal-header">
+      <h2 id="bulkDeleteTitle">Hapus Banyak Game</h2>
+      <button class="btn-close-modal" id="btnCloseBulkDelete" aria-label="Tutup">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <p class="delete-warning">
+        <strong id="bulkDeleteCount">0</strong> game akan dihapus permanen.
+        Tindakan ini <strong>tidak bisa dibatalkan</strong>.
+      </p>
+      <ul class="bulk-preview" id="bulkPreviewList"></ul>
+      <p class="bulk-more hidden" id="bulkPreviewMore"></p>
+      <p class="bulk-progress hidden" id="bulkProgress"></p>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-cancel" id="btnCancelBulkDelete">Batal</button>
+      <button type="button" class="btn-danger" id="btnConfirmBulkDelete">Ya, Hapus Semua</button>
     </div>
   </div>
 </div>
