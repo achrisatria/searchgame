@@ -9,7 +9,7 @@
    kamu yang sudah di-deploy.
 ----------------------------------------------------------- */
 const CONFIG = {
-  API_URL: "https://script.google.com/macros/s/AKfycbz8YcpUhCo3pNsJng-Fe7zBmif9jh1D4nHmDXFd00ipbOuiaBWsAqmceI5MbMwPxhK8/exec",
+  API_URL: "https://script.google.com/macros/s/AKfycbyrIL3bRsVURTlKGaafNhsAuIzEJ5FIAR_VSkDZ3JIY7J32EU1ZMnvey7JCLFY_q-uV/exec",
   PAGE_SIZE: 50,
   CACHE_KEY: "dpp_games_cache_v2",
   CACHE_TTL_MS: 30 * 60 * 1000, // cache "segar" selama 30 menit
@@ -582,6 +582,11 @@ function rowRest(g) {
       `</div>` +
       // .row-actions HARUS anak terakhir — lihat catatan `.row-cell:nth-child(4)` di style.css
       `<div class="row-actions">` +
+        // Checkbox mode-pilih. Sengaja ditaruh DI DALAM .row-actions, bukan sebagai
+        // sel/kolom baru, supaya jumlah anak .row tetap 5 dan aturan nth-child di CSS
+        // tidak bergeser. Selalu dirender UNCHECKED (HTML ini di-cache di _rowRest);
+        // status tercentangnya dipulihkan setelah render oleh syncRowSelection().
+        `<input type="checkbox" class="row-check" aria-label="Pilih ${label}">` +
         `<button type="button" class="row-btn row-btn-edit" data-act="edit" title="Edit" aria-label="Edit ${label}">` +
           `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">` +
             `<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>` +
@@ -1496,4 +1501,328 @@ function setBusy(busy, btn, label) {
   crudState.busy = busy;
   btn.disabled = busy;
   btn.textContent = label;
+}
+
+
+/* ===========================================================
+   ===  TAMBAHAN: HAPUS BANYAK GAME SEKALIGUS  ===============
+   Blok ini murni ADDITIVE. Tidak ada fungsi di atas yang diubah;
+   satu-satunya sentuhan adalah checkbox di dalam rowRest().
+   =========================================================== */
+
+const BULK_CHUNK = 200;   // maksimum game per request (backend membatasi 500)
+
+const bulkState = {
+  active: false,            // mode pilih menyala?
+  selected: new Set(),      // kumpulan uid yang tercentang
+  busy: false,
+};
+
+/* -----------------------------------------------------------
+   REFERENSI DOM TAMBAHAN
+----------------------------------------------------------- */
+Object.assign(els, {
+  btnSelectMode: document.getElementById("btnSelectMode"),
+  selectModeLabel: document.getElementById("selectModeLabel"),
+
+  bulkBar: document.getElementById("bulkBar"),
+  bulkCount: document.getElementById("bulkCount"),
+  btnSelectPage: document.getElementById("btnSelectPage"),
+  btnSelectFiltered: document.getElementById("btnSelectFiltered"),
+  btnClearSelection: document.getElementById("btnClearSelection"),
+  btnBulkDelete: document.getElementById("btnBulkDelete"),
+
+  modalBulkDeleteOverlay: document.getElementById("modalBulkDeleteOverlay"),
+  bulkDeleteCount: document.getElementById("bulkDeleteCount"),
+  bulkPreviewList: document.getElementById("bulkPreviewList"),
+  bulkPreviewMore: document.getElementById("bulkPreviewMore"),
+  bulkProgress: document.getElementById("bulkProgress"),
+  btnCloseBulkDelete: document.getElementById("btnCloseBulkDelete"),
+  btnCancelBulkDelete: document.getElementById("btnCancelBulkDelete"),
+  btnConfirmBulkDelete: document.getElementById("btnConfirmBulkDelete"),
+});
+
+/* -----------------------------------------------------------
+   MEMULIHKAN CENTANG SETELAH RENDER
+
+   render() menulis ulang seluruh tableBody lewat innerHTML, jadi
+   setiap checkbox lahir kembali dalam keadaan kosong. Daripada
+   menyisipkan pemanggilan ke dalam render() (yang berarti mengubah
+   fungsi lama), kita PANTAU tableBody dengan MutationObserver.
+
+   Observer hanya bereaksi pada perubahan daftar anak — kita sendiri
+   cuma mengubah property .checked dan className, jadi tidak ada
+   loop tak berujung.
+----------------------------------------------------------- */
+function syncRowSelection() {
+  const rows = els.tableBody.querySelectorAll(".row");
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const on = bulkState.selected.has(row.dataset.uid);
+    const box = row.querySelector(".row-check");
+    if (box) box.checked = on;
+    row.classList.toggle("is-selected", on);
+  }
+}
+
+new MutationObserver(syncRowSelection).observe(els.tableBody, { childList: true });
+
+/* -----------------------------------------------------------
+   BINDING — listener DOMContentLoaded ketiga, murni tambahan
+----------------------------------------------------------- */
+document.addEventListener("DOMContentLoaded", bindBulkEvents);
+
+function bindBulkEvents() {
+  els.btnSelectMode.addEventListener("click", toggleSelectMode);
+
+  // Delegation: satu listener untuk semua checkbox
+  els.tableBody.addEventListener("change", handleRowCheckChange);
+
+  els.btnSelectPage.addEventListener("click", selectCurrentPage);
+  els.btnSelectFiltered.addEventListener("click", selectAllFiltered);
+  els.btnClearSelection.addEventListener("click", clearSelection);
+  els.btnBulkDelete.addEventListener("click", openBulkDeleteModal);
+
+  els.btnConfirmBulkDelete.addEventListener("click", handleBulkDeleteConfirm);
+  els.btnCloseBulkDelete.addEventListener("click", closeBulkDeleteModal);
+  els.btnCancelBulkDelete.addEventListener("click", closeBulkDeleteModal);
+  els.modalBulkDeleteOverlay.addEventListener("click", (e) => {
+    if (e.target === els.modalBulkDeleteOverlay) closeBulkDeleteModal();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || bulkState.busy) return;
+    if (!els.modalBulkDeleteOverlay.classList.contains("hidden")) closeBulkDeleteModal();
+  });
+}
+
+/* ===========================================================
+   MODE PILIH
+   =========================================================== */
+function toggleSelectMode() {
+  if (bulkState.busy) return;
+
+  bulkState.active = !bulkState.active;
+
+  document.body.classList.toggle("select-mode", bulkState.active);
+  els.bulkBar.classList.toggle("hidden", !bulkState.active);
+  els.btnSelectMode.setAttribute("aria-pressed", String(bulkState.active));
+  els.selectModeLabel.textContent = bulkState.active ? "Selesai" : "Pilih";
+
+  if (!bulkState.active) clearSelection();   // keluar mode -> buang seleksi
+}
+
+function handleRowCheckChange(e) {
+  const box = e.target.closest(".row-check");
+  if (!box) return;
+
+  const row = box.closest(".row");
+  if (!row) return;
+
+  if (box.checked) bulkState.selected.add(row.dataset.uid);
+  else bulkState.selected.delete(row.dataset.uid);
+
+  row.classList.toggle("is-selected", box.checked);
+  updateBulkCount();
+}
+
+function selectCurrentPage() {
+  const rows = els.tableBody.querySelectorAll(".row");
+  for (let i = 0; i < rows.length; i++) bulkState.selected.add(rows[i].dataset.uid);
+  syncRowSelection();
+  updateBulkCount();
+}
+
+function selectAllFiltered() {
+  // `filtered` = hasil search + filter yang sedang aktif, bukan hanya halaman ini
+  for (let i = 0; i < filtered.length; i++) bulkState.selected.add(uidOf(filtered[i]));
+  syncRowSelection();
+  updateBulkCount();
+}
+
+function clearSelection() {
+  bulkState.selected.clear();
+  syncRowSelection();
+  updateBulkCount();
+}
+
+function updateBulkCount() {
+  const n = bulkState.selected.size;
+  els.bulkCount.textContent = n.toLocaleString("id");
+  els.btnBulkDelete.disabled = n === 0;
+  els.btnBulkDelete.textContent = n > 0 ? `Hapus ${n.toLocaleString("id")} Game` : "Hapus Terpilih";
+}
+
+/* -----------------------------------------------------------
+   Terjemahkan kumpulan uid -> objek game yang masih ada.
+
+   uid bersifat deterministik dari isi data (provider|nama|tipe).
+   Kalau sebuah game diedit sesudah dicentang, uid-nya berubah dan
+   entri lama tidak akan ketemu — itu memang perilaku yang diinginkan:
+   lebih baik melewatkan satu game daripada menghapus game yang salah.
+----------------------------------------------------------- */
+function selectedGames() {
+  const byUid = new Map();
+  for (let i = 0; i < allGames.length; i++) byUid.set(uidOf(allGames[i]), allGames[i]);
+
+  const out = [];
+  bulkState.selected.forEach((uid) => {
+    const g = byUid.get(uid);
+    if (g) out.push(g);
+  });
+  return out;
+}
+
+/* ===========================================================
+   MODAL KONFIRMASI
+   =========================================================== */
+function openBulkDeleteModal() {
+  const games = selectedGames();
+  if (games.length === 0) {
+    showToast("Tidak ada game yang dipilih.", "error");
+    return;
+  }
+
+  els.bulkDeleteCount.textContent = games.length.toLocaleString("id");
+
+  // Pratinjau maksimal 10 nama. textContent, bukan innerHTML -> aman dari injeksi.
+  els.bulkPreviewList.innerHTML = "";
+  const preview = games.slice(0, 10);
+  for (let i = 0; i < preview.length; i++) {
+    const li = document.createElement("li");
+    li.textContent = preview[i].namaGame;
+
+    const sub = document.createElement("span");
+    sub.textContent = ` — ${preview[i].provider}`;
+    li.appendChild(sub);
+
+    els.bulkPreviewList.appendChild(li);
+  }
+
+  const sisa = games.length - preview.length;
+  els.bulkPreviewMore.textContent = sisa > 0 ? `...dan ${sisa.toLocaleString("id")} game lainnya.` : "";
+  els.bulkPreviewMore.classList.toggle("hidden", sisa === 0);
+
+  els.bulkProgress.textContent = "";
+  els.bulkProgress.classList.add("hidden");
+
+  els.modalBulkDeleteOverlay.classList.remove("hidden");
+  setTimeout(() => els.btnCancelBulkDelete.focus(), 50);  // fokus ke aksi yang aman
+}
+
+function closeBulkDeleteModal() {
+  if (bulkState.busy) return;
+  els.modalBulkDeleteOverlay.classList.add("hidden");
+}
+
+/* ===========================================================
+   EKSEKUSI HAPUS MASSAL
+   =========================================================== */
+async function handleBulkDeleteConfirm() {
+  if (bulkState.busy) return;
+
+  const games = selectedGames();
+  if (games.length === 0) { closeBulkDeleteModal(); return; }
+
+  bulkState.busy = true;
+  els.btnConfirmBulkDelete.disabled = true;
+  els.btnCancelBulkDelete.disabled = true;
+  els.bulkProgress.classList.remove("hidden");
+
+  // Snapshot identitasnya SEKARANG. Kalau fetchFresh di latar belakang
+  // mengganti isi allGames selama request berjalan, kita tetap tahu
+  // persis game mana yang dimaksud.
+  const targets = games.map((g) => ({ provider: g.provider, namaGame: g.namaGame }));
+
+  const deleted = [];
+  let failed = 0;
+  let lastError = "";
+
+  try {
+    for (let i = 0; i < targets.length; i += BULK_CHUNK) {
+      const chunk = targets.slice(i, i + BULK_CHUNK);
+
+      const done = Math.min(i + chunk.length, targets.length);
+      els.bulkProgress.textContent = `Menghapus ${done.toLocaleString("id")} dari ${targets.length.toLocaleString("id")}...`;
+      els.btnConfirmBulkDelete.textContent = `Menghapus... ${Math.round((done / targets.length) * 100)}%`;
+
+      try {
+        const res = await fetch(CONFIG.API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action: "deleteMany", games: chunk }),
+        });
+        const json = await parseJsonSafe(res);
+        if (!json.success) throw new Error(json.message || "Gagal menghapus");
+
+        // Game yang dilaporkan notFound tetap dianggap beres:
+        // memang sudah tidak ada di sheet, jadi harus lenyap dari UI juga.
+        for (let k = 0; k < chunk.length; k++) deleted.push(chunk[k]);
+      } catch (err) {
+        failed += chunk.length;
+        lastError = err.message || "Gagal menghapus";
+      }
+    }
+  } finally {
+    // Terapkan yang BERHASIL saja — walaupun sebagian gagal di tengah jalan
+    if (deleted.length > 0) applyBulkDeletion(deleted);
+
+    bulkState.busy = false;
+    els.btnConfirmBulkDelete.disabled = false;
+    els.btnCancelBulkDelete.disabled = false;
+    els.btnConfirmBulkDelete.textContent = "Ya, Hapus Semua";
+    els.bulkProgress.classList.add("hidden");
+    closeBulkDeleteModal();
+  }
+
+  if (failed === 0) {
+    showToast(`✓ ${deleted.length.toLocaleString("id")} game berhasil dihapus.`, "success");
+  } else if (deleted.length > 0) {
+    showToast(`${deleted.length} dihapus, ${failed} gagal. ${lastError}`, "error");
+  } else {
+    showToast(lastError || "Gagal menghapus game.", "error");
+  }
+
+  if (deleted.length > 0) fetchFresh(false);   // sinkronkan di belakang layar
+}
+
+/* -----------------------------------------------------------
+   Terapkan penghapusan ke state lokal.
+   Dicocokkan lewat gameKey (provider + nama), BUKAN uid, karena
+   itulah kunci yang dipakai server dan pendingDeletes.
+----------------------------------------------------------- */
+function applyBulkDeletion(deleted) {
+  const now = Date.now();
+  const keys = new Set(deleted.map(gameKey));
+
+  // 1. Buang dari allGames
+  allGames = allGames.filter((g) => !keys.has(gameKey(g)));
+
+  // 2. Tahan penghapusan supaya fetchFresh yang masih basi tidak
+  //    menghidupkan kembali barisnya (lihat mergePending)
+  for (let i = 0; i < deleted.length; i++) {
+    pendingDeletes.push({ provider: deleted[i].provider, namaGame: deleted[i].namaGame, _ts: now });
+  }
+
+  // 3. Batalkan pendingAdds yang cocok — kalau tidak, mergePending
+  //    akan menyuntikkan kembali game yang barusan kita hapus
+  for (let i = pendingAdds.length - 1; i >= 0; i--) {
+    if (keys.has(gameKey(pendingAdds[i]))) pendingAdds.splice(i, 1);
+  }
+
+  // 4. Bersihkan uid terpilih yang sudah tidak punya baris.
+  //    Dibangun sebagai Set sekali (O(n)), bukan allGames.some() di dalam
+  //    forEach (O(n x m)) — 500 terpilih x 10.000 baris = 5 juta panggilan
+  //    uidOf(), yang masing-masing menjalankan encodeURIComponent.
+  const tersisa = new Set();
+  for (let i = 0; i < allGames.length; i++) tersisa.add(uidOf(allGames[i]));
+
+  const buang = [];
+  bulkState.selected.forEach((uid) => { if (!tersisa.has(uid)) buang.push(uid); });
+  for (let i = 0; i < buang.length; i++) bulkState.selected.delete(buang[i]);
+
+  saveCache(allGames);
+  populateFilters();
+  applyFilters();       // memicu render -> observer memulihkan centang
+  updateBulkCount();
 }
