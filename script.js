@@ -133,6 +133,8 @@ const els = {
   btnCloseCrosscheck2: document.getElementById("btnCloseCrosscheck2"),
   btnCrosscheck2Back: document.getElementById("btnCrosscheck2Back"),
   crosscheckInput: document.getElementById("crosscheckInput"),
+  crosscheckProvider: document.getElementById("crosscheckProvider"),
+  crosscheckProviderList: document.getElementById("crosscheckProviderList"),
   crosscheckLineCount: document.getElementById("crosscheckLineCount"),
   btnRunCrosscheck: document.getElementById("btnRunCrosscheck"),
   crosscheckStep1: document.getElementById("crosscheckStep1"),
@@ -298,6 +300,21 @@ function addPending(game) {
   const key = gameKey(game);
   if (pendingAdds.some((p) => gameKey(p) === key)) return;
   pendingAdds.push({ ...game, _ts: Date.now() });
+}
+
+/* -----------------------------------------------------------
+   FIX #3 (asimetri) — kebalikan dari pembatalan pendingAdds di jalur hapus.
+   Saat sebuah game DITAMBAH, buang pendingDelete yang cocok. Kalau tidak,
+   ketika seseorang menghapus lalu menambah kembali game yang sama sebelum
+   server sempat sinkron, mergePending akan MENGHAPUS (langkah delete) lalu
+   MENYUNTIK ULANG (langkah add) game itu berulang kali sampai TTL habis —
+   pekerjaan mubazir dan jendela rapuh selama 90 detik.
+----------------------------------------------------------- */
+function cancelPendingDelete(game) {
+  const key = gameKey(game);
+  for (let i = pendingDeletes.length - 1; i >= 0; i--) {
+    if (gameKey(pendingDeletes[i]) === key) pendingDeletes.splice(i, 1);
+  }
 }
 
 // Buang entri pending yang sudah terlalu tua di ketiga antrian, supaya
@@ -781,6 +798,7 @@ function handleAddGame(e) {
       allGames.push(newGame);
       // Tahan di UI sampai server benar-benar mengembalikannya (lihat mergePending)
       addPending({ provider, namaGame, tipeGame });
+      cancelPendingDelete({ provider, namaGame }); // FIX #3: batalkan hapus yang antre untuk game yang sama
       saveCache(allGames);
       populateFilters();
       applyFilters();
@@ -886,12 +904,20 @@ const ccState = {
   foundGames: [],     // nama game yang sudah ada (beserta data provider/tipenya)
   selectedItems: new Set(), // index dari missingGames yang dipilih
   allSelected: false,
+  provider: "",       // FIX #2: provider konteks dari Step 1 (opsional). Kalau diisi,
+                      // pencocokan memakai provider + nama (gameKey), bukan nama saja.
 };
 
 function openCrosscheck() {
   // Reset ke step 1
   els.crosscheckInput.value = "";
+  els.crosscheckProvider.value = "";
   els.crosscheckLineCount.textContent = "0";
+
+  // Isi datalist provider dari data terkini supaya mudah dipilih & konsisten ejaan
+  const providers = uniqSorted(allGames.map((g) => g.provider));
+  els.crosscheckProviderList.innerHTML = providers.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
+
   els.crosscheckStep1.classList.remove("hidden");
   els.crosscheckStep2.classList.add("hidden");
   els.modalCrosscheckOverlay.classList.remove("hidden");
@@ -944,13 +970,26 @@ function runCrosscheck() {
     return;
   }
 
-  // Buat lookup dari nama game yang ada di dashboard (case-insensitive)
-  // Format: namaLowercase → { provider, tipeGame }
+  // FIX #2: provider konteks (opsional).
+  // - Diisi  → identitas game = provider + nama (SAMA dengan gameKey di seluruh app).
+  //            Jadi nama yang sama dari provider berbeda tetap terdeteksi "belum terdata".
+  // - Kosong → jatuh kembali ke pencocokan nama-saja (perilaku lama, backward-compatible).
+  const ccProvider = els.crosscheckProvider.value.trim();
+  ccState.provider = ccProvider;
+
+  // Buat lookup dari game yang ada di dashboard (case-insensitive).
+  // Kunci menyesuaikan mode: gameKey (provider|nama) atau namaLowercase.
   const existingMap = new Map();
   for (const g of allGames) {
-    const key = g.namaGame.toLowerCase().trim();
-    if (!existingMap.has(key)) {
-      existingMap.set(key, { provider: g.provider, tipeGame: g.tipeGame });
+    if (ccProvider) {
+      // Kunci gameKey unik per baris, jadi tidak perlu penjaga "has" —
+      // baris dengan gameKey sama memang tidak diizinkan backend.
+      existingMap.set(gameKey(g), { provider: g.provider, tipeGame: g.tipeGame });
+    } else {
+      const key = (g.namaGame || "").toLowerCase().trim();
+      if (!existingMap.has(key)) {
+        existingMap.set(key, { provider: g.provider, tipeGame: g.tipeGame });
+      }
     }
   }
 
@@ -959,7 +998,10 @@ function runCrosscheck() {
   ccState.foundGames = [];
 
   for (const name of inputNames) {
-    const match = existingMap.get(name.toLowerCase());
+    const lookupKey = ccProvider
+      ? gameKey({ provider: ccProvider, namaGame: name })
+      : name.toLowerCase().trim();
+    const match = existingMap.get(lookupKey);
     if (match) {
       ccState.foundGames.push({ name, provider: match.provider, tipeGame: match.tipeGame });
     } else {
@@ -1039,9 +1081,11 @@ function renderCrosscheckResult(total) {
   els.batchProviderList.innerHTML = providers.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
   els.batchTipeList.innerHTML     = types.map((v) => `<option value="${escHtml(v)}"></option>`).join("");
 
-  // Sembunyikan batch form, reset field
+  // Sembunyikan batch form, reset field.
+  // FIX #2: kalau provider konteks diisi di Step 1, jadikan default batch-add —
+  // supaya "missing" yang dicocokkan dan yang ditambahkan memakai provider yang sama.
   els.batchForm.classList.add("hidden");
-  els.batchProvider.value = "";
+  els.batchProvider.value = ccState.provider || "";
   els.batchTipe.value = "";
   els.batchProviderError.textContent = "";
   els.batchTipeError.textContent = "";
@@ -1142,6 +1186,7 @@ async function handleBatchAdd() {
       indexGame(addedGame);
       allGames.push(addedGame);
       addPending({ provider, namaGame, tipeGame }); // FIX #3
+      cancelPendingDelete({ provider, namaGame });  // FIX #3 (asimetri): batalkan hapus yang antre
       succeeded.push(namaGame);
     } catch (_) {
       failCount++;
