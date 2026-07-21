@@ -168,7 +168,13 @@
       <div class="modal-body">
         <p class="crosscheck-hint">
           Tempel daftar nama permainan di bawah ini (satu nama per baris). Sistem akan menemukan permainan yang <strong>belum terdata</strong> di dashboard.
+          Isi <strong>Provider</strong> bila daftar ini berasal dari satu provider tertentu &mdash; pencocokan akan memakai kombinasi provider&nbsp;+&nbsp;nama, bukan nama saja.
         </p>
+        <div class="form-group">
+          <label for="crosscheckProvider">Provider <span style="font-weight:400;color:var(--muted)">(opsional)</span></label>
+          <input type="text" id="crosscheckProvider" list="crosscheckProviderList" placeholder="Contoh: Pragmatic Play" autocomplete="off" />
+          <datalist id="crosscheckProviderList"></datalist>
+        </div>
         <div class="form-group" style="margin-bottom:0">
           <label for="crosscheckInput">Daftar Nama Permainan</label>
           <textarea id="crosscheckInput" class="crosscheck-textarea" placeholder="Contoh:&#10;Sweet Bonanza&#10;Gates of Olympus&#10;Starlight Princess&#10;..."></textarea>
